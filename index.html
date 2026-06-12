@@ -1,0 +1,2407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BULL OR BEAR - Investment Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Optimizaciones de performance */
+        * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Hardware acceleration para elementos animados */
+        .screen,
+        .asset-card,
+        .prediction-button,
+        .neon-button,
+        .stat-box,
+        .particle {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a0033 0%, #0d001a 50%, #1a0f33 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Grid futurista de fondo */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.08) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMoveOptimized 20s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+            will-change: transform;
+        }
+
+        @keyframes gridMoveOptimized {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(50px); }
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 0, 255, 0.08) 0%, transparent 50%);
+            animation: pulseOptimized 8s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+            will-change: opacity;
+        }
+
+        @keyframes pulseOptimized {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .container {
+            width: 90%;
+            max-width: 900px;
+            text-align: center;
+            position: relative;
+            padding-top: 60px;
+            z-index: 10;
+        }
+
+        /* Botón de reinicio siempre visible */
+        .restart-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: 2px solid #ff00ff;
+            color: #ff00ff;
+            padding: 0.8rem 1.5rem;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+            transition: all 0.3s;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
+            border-radius: 8px;
+            z-index: 9999;
+        }
+
+        .restart-btn:hover {
+            background: rgba(255, 0, 255, 0.2);
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.6);
+            transform: scale(1.05);
+        }
+
+        .restart-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Pantalla de inicio */
+        .screen {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Título principal */
+        .main-title {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3rem;
+            text-shadow: 
+                0 0 10px #ff00ff,
+                0 0 20px #ff00ff,
+                0 0 30px #ff00ff,
+                0 0 40px #ff00ff;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                transform: scale(1);
+                filter: brightness(1);
+            }
+            50% { 
+                transform: scale(1.02);
+                filter: brightness(1.2);
+            }
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 3rem;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        /* Botones principales */
+        .neon-button {
+            background: transparent;
+            border: 3px solid #00ffff;
+            color: #00ffff;
+            padding: 1.5rem 4rem;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.2rem;
+            transition: all 0.3s;
+            box-shadow: 
+                0 0 10px #00ffff,
+                inset 0 0 10px rgba(0, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .neon-button:hover {
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 
+                0 0 20px #00ffff,
+                0 0 30px #00ffff,
+                inset 0 0 20px rgba(0, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .neon-button:active {
+            transform: scale(0.95);
+        }
+
+        /* Stats panel */
+        .stats-panel {
+            display: flex;
+            justify-content: space-around;
+            margin: 2rem 0;
+            gap: 2rem;
+        }
+
+        .stat-box {
+            background: rgba(255, 0, 255, 0.1);
+            border: 3px solid #ff00ff;
+            padding: 1.5rem 2rem;
+            border-radius: 10px;
+            flex: 1;
+            box-shadow: 
+                0 0 20px rgba(255, 0, 255, 0.5),
+                inset 0 0 20px rgba(255, 0, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent,
+                rgba(255, 0, 255, 0.2),
+                transparent
+            );
+            animation: shimmer 3s linear infinite;
+            will-change: transform;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Efecto scanline cyberpunk - optimizado */
+        .container::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 255, 255, 0.02) 0px,
+                transparent 2px,
+                transparent 4px
+            );
+            pointer-events: none;
+            z-index: 1000;
+            animation: scanline 10s linear infinite;
+            will-change: transform;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(10px); }
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            color: #ff00ff;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Selección de activos */
+        .assets-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .asset-card {
+            background: rgba(0, 255, 255, 0.05);
+            border: 3px solid #00ffff;
+            padding: 3rem 2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .asset-card:hover {
+            background: rgba(0, 255, 255, 0.15);
+            transform: translateY(-10px);
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.5),
+                0 10px 40px rgba(0, 255, 255, 0.3);
+        }
+
+        .asset-card.selected {
+            background: rgba(0, 255, 255, 0.25);
+            border-color: #ff00ff;
+            box-shadow: 
+                0 0 40px #ff00ff,
+                inset 0 0 30px rgba(255, 0, 255, 0.3);
+        }
+
+        .asset-icon {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Iconos neón SVG en lugar de emojis */
+        .neon-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 1.5rem;
+            filter: drop-shadow(0 0 20px currentColor);
+        }
+
+        .neon-icon path,
+        .neon-icon circle,
+        .neon-icon rect,
+        .neon-icon line {
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .neon-icon.filled path,
+        .neon-icon.filled circle,
+        .neon-icon.filled rect {
+            fill: currentColor;
+            fill-opacity: 0.2;
+        }
+
+        .asset-name {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        /* Botones de predicción */
+        .prediction-buttons {
+            display: flex;
+            gap: 3rem;
+            justify-content: center;
+            margin: 3rem 0;
+        }
+
+        .prediction-button {
+            background: transparent;
+            border: 4px solid;
+            padding: 3rem 4rem;
+            font-size: 3rem;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: all 0.3s;
+            min-width: 250px;
+            font-weight: bold;
+        }
+
+        .prediction-button.up {
+            border-color: #00ff00;
+            color: #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+
+        .prediction-button.up:hover {
+            background: rgba(0, 255, 0, 0.2);
+            box-shadow: 0 0 40px rgba(0, 255, 0, 0.8);
+            transform: scale(1.1);
+        }
+
+        .prediction-button.down {
+            border-color: #ff0000;
+            color: #ff0000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
+        .prediction-button.down:hover {
+            background: rgba(255, 0, 0, 0.2);
+            box-shadow: 0 0 40px rgba(255, 0, 0, 0.8);
+            transform: scale(1.1);
+        }
+
+        /* Gráfica animada */
+        /* Chart container nuevo */
+        .chart-container {
+            margin: 1.5rem auto;
+            max-width: 650px;
+        }
+
+        /* Gráfica canvas */
+        #chartCanvas {
+            width: 100%;
+            height: 200px;
+            border-radius: 12px;
+            display: block;
+        }
+
+        /* Ticker estilo Wall Street */
+        .ticker-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid rgba(0,255,255,0.3);
+            border-radius: 8px;
+            padding: 0.8rem 1.5rem;
+            margin-top: 0.8rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .ticker-asset {
+            color: #00ffff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 0.1rem;
+        }
+
+        .ticker-price {
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 0.05rem;
+            transition: color 0.3s;
+        }
+
+        .ticker-change {
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 0.3rem 0.8rem;
+            border-radius: 5px;
+        }
+
+        .ticker-live {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: #aaaaaa;
+            font-size: 0.9rem;
+        }
+
+        .ticker-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff00;
+            animation: tickerBlink 1s infinite;
+        }
+
+        @keyframes tickerBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Resultado */
+        .result-message {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 2rem 0;
+            padding: 2rem;
+            border-radius: 20px;
+            animation: resultPulse 0.5s;
+        }
+
+        .result-message.win {
+            color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 40px rgba(0, 255, 0, 0.5);
+        }
+
+        .result-message.lose {
+            color: #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+            border: 3px solid #ff0000;
+            box-shadow: 0 0 40px rgba(255, 0, 0, 0.5);
+        }
+
+        @keyframes resultPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* Ranking */
+        .ranking-list {
+            margin: 2rem auto;
+            max-width: 500px;
+        }
+
+        .ranking-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            margin: 0.5rem 0;
+            background: rgba(0, 255, 255, 0.1);
+            border: 2px solid #00ffff;
+            border-radius: 10px;
+            font-size: 1.5rem;
+        }
+
+        .ranking-item.current {
+            background: rgba(255, 0, 255, 0.2);
+            border-color: #ff00ff;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+        }
+
+        .rank-position {
+            color: #ff00ff;
+            font-weight: bold;
+        }
+
+        .rank-money {
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+
+        /* Particles effect */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: float 3s infinite;
+        }
+
+        @keyframes float {
+            0% { 
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(-100px) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-title {
+                font-size: 2.5rem;
+            }
+
+            .assets-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .prediction-buttons {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .prediction-button {
+                min-width: 200px;
+                padding: 2rem 3rem;
+                font-size: 2rem;
+            }
+
+            .neon-button {
+                padding: 1rem 2rem;
+                font-size: 1.5rem;
+            }
+        }
+
+        .instruction {
+            font-size: 1.8rem;
+            color: #ff00ff;
+            margin: 2rem 0;
+            text-shadow: 0 0 10px #ff00ff;
+            font-weight: bold;
+        }
+
+        /* Estilos del leaderboard */
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 1.2rem;
+            margin: 0.4rem 0;
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(0,255,255,0.3);
+            border-radius: 8px;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .leaderboard-item.top1 {
+            border-color: #ffff00;
+            background: rgba(255,255,0,0.1);
+            box-shadow: 0 0 15px rgba(255,255,0,0.2);
+        }
+
+        .leaderboard-item.top2 {
+            border-color: #aaaaaa;
+            background: rgba(170,170,170,0.1);
+        }
+
+        .leaderboard-item.top3 {
+            border-color: #ff8800;
+            background: rgba(255,136,0,0.1);
+        }
+
+        .leaderboard-item.highlight {
+            border-color: #ff00ff;
+            background: rgba(255,0,255,0.15);
+            box-shadow: 0 0 20px rgba(255,0,255,0.3);
+        }
+
+        .lb-position {
+            font-weight: bold;
+            font-size: 1.2rem;
+            min-width: 35px;
+        }
+
+        .lb-name {
+            flex: 1;
+            text-align: left;
+            padding: 0 1rem;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 0.05rem;
+        }
+
+        .lb-money {
+            font-weight: bold;
+            color: #00ff00;
+            text-shadow: 0 0 8px #00ff00;
+            font-size: 1.2rem;
+        }
+
+        .lb-empty {
+            text-align: center;
+            color: rgba(0,255,255,0.4);
+            font-size: 1rem;
+            padding: 2rem;
+            border: 1px dashed rgba(0,255,255,0.2);
+            border-radius: 8px;
+        }
+
+
+        /* ================================
+           FINANCIAL CONTROLLER FIRE THEME
+        ================================ */
+        body.fc-mode {
+            background: linear-gradient(180deg, #0a0000 0%, #1a0000 40%, #2a0800 100%);
+        }
+
+        body.fc-mode::before {
+            background-image: 
+                linear-gradient(rgba(255, 60, 0, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 60, 0, 0.15) 1px, transparent 1px);
+        }
+
+        body.fc-mode::after {
+            background: radial-gradient(ellipse at 50% 100%, rgba(255,80,0,0.35) 0%, rgba(255,30,0,0.15) 40%, transparent 70%);
+            animation: fireGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes fireGlow {
+            0%, 100% { opacity: 0.7; transform: scaleX(1); }
+            50% { opacity: 1; transform: scaleX(1.1); }
+        }
+
+        /* Llamas en la parte inferior */
+        /* Canvas de fuego */
+        #fcFireCanvas {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 280px;
+            pointer-events: none;
+            z-index: 5;
+            display: none;
+        }
+
+        /* Resplandor desde abajo */
+        .fc-ground-glow {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            background: linear-gradient(to top, rgba(255,50,0,0.6), rgba(255,30,0,0.2), transparent);
+            pointer-events: none;
+            z-index: 4;
+            display: none;
+            animation: groundPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes groundPulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        .fc-title {
+            color: #ff4400 !important;
+            text-shadow: 0 0 20px #ff4400, 0 0 40px #ff2200, 0 0 60px #ff0000 !important;
+            animation: fireTitlePulse 2s ease-in-out infinite !important;
+        }
+
+        @keyframes fireTitlePulse {
+            0%, 100% { text-shadow: 0 0 20px #ff4400, 0 0 40px #ff2200; }
+            50% { text-shadow: 0 0 30px #ff6600, 0 0 60px #ff4400, 0 0 80px #ff2200; }
+        }
+
+        .fc-stat-box {
+            background: rgba(255, 40, 0, 0.12) !important;
+            border-color: #ff4400 !important;
+            box-shadow: 0 0 25px rgba(255,68,0,0.5), inset 0 0 20px rgba(255,68,0,0.1) !important;
+        }
+
+        .fc-stat-box::before {
+            background: linear-gradient(45deg, transparent, rgba(255,100,0,0.4), transparent) !important;
+        }
+
+        .fc-stat-label { color: #ff6600 !important; }
+        .fc-stat-value { color: #ffaa00 !important; text-shadow: 0 0 15px #ff6600 !important; }
+
+        .fc-asset-card {
+            border-color: #ff4400 !important;
+            background: rgba(255,40,0,0.08) !important;
+            box-shadow: 0 0 25px rgba(255,68,0,0.4) !important;
+        }
+
+        .fc-asset-card:hover {
+            background: rgba(255,60,0,0.22) !important;
+            box-shadow: 0 0 45px rgba(255,68,0,0.7), 0 0 80px rgba(255,30,0,0.3) !important;
+            transform: translateY(-10px);
+        }
+
+        .fc-asset-card.selected {
+            border-color: #ffcc00 !important;
+            box-shadow: 0 0 50px #ff6600, 0 0 80px #ff3300 !important;
+        }
+
+        .fc-instruction { color: #ff6600 !important; text-shadow: 0 0 15px #ff4400 !important; }
+
+        .fc-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #cc2200, #ff6600);
+            color: white;
+            font-size: 0.8rem;
+            font-weight: bold;
+            padding: 3px 10px;
+            border-radius: 4px;
+            letter-spacing: 0.1rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 0 15px rgba(255,68,0,0.7);
+            animation: badgePulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes badgePulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(255,68,0,0.5); }
+            50% { box-shadow: 0 0 25px rgba(255,100,0,0.9); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Botón de reinicio siempre visible -->
+    <button class="restart-btn" id="restartBtn" onclick="confirmRestart()" style="display: none;">
+        <svg width="20" height="20" viewBox="0 0 20 20" style="display: inline-block; vertical-align: middle; margin-right: 5px; filter: drop-shadow(0 0 3px #ff00ff);">
+            <path d="M 10 3 A 7 7 0 1 1 6 5" fill="none" stroke="#ff00ff" stroke-width="2" stroke-linecap="round"/>
+            <path d="M 10 3 L 10 7 M 10 3 L 6 3" stroke="#ff00ff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        RESTART
+    </button>
+
+    <div class="particles" id="particles"></div>
+    <div class="fc-ground-glow" id="fcGroundGlow"></div>
+    <canvas id="fcFireCanvas"></canvas>
+
+    <div class="container">
+        <!-- Pantalla de inicio con Top 10 -->
+        <div id="startScreen" class="screen active">
+            <div style="font-size: 2.5rem; color: #00ffff; text-shadow: 0 0 20px #00ffff; margin-bottom: 0.5rem; letter-spacing: 0.5rem; font-weight: bold;">
+                ACCOUNTING
+            </div>
+            <h1 class="main-title">BULL OR BEAR</h1>
+            <p class="subtitle">The Future of Trading</p>
+
+            <!-- Registro de nombre -->
+            <div style="margin: 1.5rem auto; max-width: 500px;">
+                <div style="background: rgba(0,255,255,0.05); border: 2px solid #00ffff; border-radius: 15px; padding: 1.5rem; box-shadow: 0 0 20px rgba(0,255,255,0.2);">
+                    <p style="color: #00ffff; font-size: 1.2rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.1rem;">
+                        <svg width="20" height="20" viewBox="0 0 20 20" style="display:inline-block;vertical-align:middle;margin-right:5px;filter:drop-shadow(0 0 3px #00ffff);">
+                            <circle cx="10" cy="7" r="4" fill="none" stroke="#00ffff" stroke-width="1.5"/>
+                            <path d="M 3 18 Q 3 13 10 13 Q 17 13 17 18" fill="none" stroke="#00ffff" stroke-width="1.5"/>
+                        </svg>
+                        Enter your name:
+                    </p>
+                    <input 
+                        type="text" 
+                        id="playerName" 
+                        placeholder="Your name here..." 
+                        maxlength="20"
+                        onkeypress="if(event.key==='Enter') showLevelSelect()"
+                        style="
+                            width: 100%;
+                            background: rgba(0,0,0,0.5);
+                            border: 2px solid #ff00ff;
+                            color: #ffffff;
+                            font-size: 1.5rem;
+                            padding: 0.8rem 1rem;
+                            border-radius: 8px;
+                            outline: none;
+                            text-align: center;
+                            letter-spacing: 0.1rem;
+                            box-shadow: 0 0 10px rgba(255,0,255,0.3);
+                            margin-bottom: 1rem;
+                            font-family: Arial, sans-serif;
+                        "
+                    />
+                    <button class="neon-button" onclick="showLevelSelect()" style="width: 100%; padding: 1rem; font-size: 1.5rem;">
+                        NEXT
+                    </button>
+                </div>
+            </div>
+
+            <!-- Top 10 -->
+            <div style="margin: 1.5rem auto; max-width: 600px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <p style="color: #ffff00; font-size: 1.3rem; font-weight: bold; text-shadow: 0 0 10px #ffff00; text-transform: uppercase; letter-spacing: 0.2rem;">
+                        <svg width="25" height="25" viewBox="0 0 25 25" style="display:inline-block;vertical-align:middle;margin-right:5px;filter:drop-shadow(0 0 5px #ffff00);">
+                            <path d="M 12 3 L 15 9 L 22 9 L 16 14 L 18 21 L 12 17 L 6 21 L 8 14 L 2 9 L 9 9 Z" fill="none" stroke="#ffff00" stroke-width="1.5"/>
+                        </svg>
+                        TOP 5 OF THE DAY
+                    </p>
+                    <button onclick="clearLeaderboard()" style="
+                        background: transparent;
+                        border: 1px solid #ff0000;
+                        color: #ff0000;
+                        padding: 0.4rem 0.8rem;
+                        font-size: 0.85rem;
+                        cursor: pointer;
+                        border-radius: 5px;
+                        text-transform: uppercase;
+                        letter-spacing: 0.05rem;
+                        transition: all 0.3s;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.3rem;
+                    " onmouseover="this.style.background='rgba(255,0,0,0.2)'" onmouseout="this.style.background='transparent'">
+                        <svg width="14" height="14" viewBox="0 0 14 14" style="filter:drop-shadow(0 0 2px #ff0000);">
+                            <path d="M 3 3 L 11 11 M 11 3 L 3 11" stroke="#ff0000" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        CLEAR
+                    </button>
+                </div>
+                <div id="leaderboardList">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de selección de nivel -->
+        <div id="levelSelectScreen" class="screen">
+            <div style="font-size: 2rem; color: #00ffff; text-shadow: 0 0 20px #00ffff; margin-bottom: 0.5rem; letter-spacing: 0.3rem; font-weight: bold;">
+                ACCOUNTING
+            </div>
+            <h1 class="main-title" style="margin-bottom: 0.5rem;">BULL OR BEAR</h1>
+            <p style="color: #ffff00; font-size: 1.3rem; margin-bottom: 2rem; text-shadow: 0 0 10px #ffff00;">
+                Welcome, <span id="welcomeName" style="color: #ff00ff;"></span>
+            </p>
+
+            <p style="color: #00ffff; font-size: 1.3rem; margin-bottom: 2rem; text-transform: uppercase; letter-spacing: 0.2rem;">
+                Choose your level:
+            </p>
+
+            <div style="display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem;">
+
+                <!-- Nivel Normal -->
+                <div onclick="startGame('normal')" style="
+                    background: rgba(0,255,255,0.05);
+                    border: 3px solid #00ffff;
+                    border-radius: 20px;
+                    padding: 2.5rem 2rem;
+                    cursor: pointer;
+                    max-width: 280px;
+                    flex: 1;
+                    transition: all 0.3s;
+                    box-shadow: 0 0 20px rgba(0,255,255,0.2);
+                " onmouseover="this.style.background='rgba(0,255,255,0.15)'; this.style.transform='translateY(-8px)'"
+                   onmouseout="this.style.background='rgba(0,255,255,0.05)'; this.style.transform='translateY(0)'">
+                    <!-- Icono nivel normal -->
+                    <svg width="80" height="80" viewBox="0 0 80 80" style="filter: drop-shadow(0 0 10px #00ffff); margin-bottom: 1rem;">
+                        <rect x="10" y="55" width="12" height="18" fill="none" stroke="#00ffff" stroke-width="2.5"/>
+                        <rect x="28" y="40" width="12" height="33" fill="none" stroke="#00ffff" stroke-width="2.5"/>
+                        <rect x="46" y="25" width="12" height="48" fill="none" stroke="#00ffff" stroke-width="2.5"/>
+                        <rect x="64" y="10" width="12" height="63" fill="none" stroke="#00ffff" stroke-width="2.5"/>
+                        <path d="M 72 5 L 72 15 M 72 5 L 67 10 M 72 5 L 77 10" stroke="#00ffff" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                    <div style="color: #00ffff; font-size: 1.6rem; font-weight: bold; text-shadow: 0 0 10px #00ffff; margin-bottom: 0.5rem; text-transform: uppercase;">
+                        BULL OR BEAR
+                    </div>
+                    <div style="color: #aaffff; font-size: 1rem; margin-bottom: 1rem;">Standard Level</div>
+                    <div style="color: #ffffff; font-size: 0.95rem; line-height: 1.6;">
+                        Clear and direct clues<br>
+                        Ideal for beginners<br>
+                        10 rounds · $5,000
+                    </div>
+                    <div style="margin-top: 1.5rem; padding: 0.5rem 1rem; border: 2px solid #00ffff; border-radius: 8px; color: #00ffff; font-size: 1rem;">
+                        START
+                    </div>
+                </div>
+
+                <!-- Nivel Financial Controller -->
+                <div onclick="startGame('financial')" style="
+                    background: rgba(255,60,0,0.08);
+                    border: 3px solid #ff4400;
+                    border-radius: 20px;
+                    padding: 2.5rem 2rem;
+                    cursor: pointer;
+                    max-width: 280px;
+                    flex: 1;
+                    transition: all 0.3s;
+                    box-shadow: 0 0 25px rgba(255,68,0,0.3);
+                    position: relative;
+                    overflow: hidden;
+                " onmouseover="this.style.background='rgba(255,60,0,0.2)'; this.style.transform='translateY(-8px)'"
+                   onmouseout="this.style.background='rgba(255,60,0,0.08)'; this.style.transform='translateY(0)'">
+                    <!-- Etiqueta HARD -->
+                    <div style="
+                        position: absolute;
+                        top: 12px; right: 12px;
+                        background: #ff4400;
+                        color: white;
+                        font-size: 0.7rem;
+                        font-weight: bold;
+                        padding: 3px 8px;
+                        border-radius: 4px;
+                        letter-spacing: 0.1rem;
+                    ">HARD</div>
+                    <!-- Icono fuego -->
+                    <svg width="80" height="80" viewBox="0 0 80 80" style="filter: drop-shadow(0 0 12px #ff4400); margin-bottom: 1rem;">
+                        <path d="M 40 10 Q 55 20 50 35 Q 60 25 58 40 Q 65 30 62 48 Q 65 65 40 72 Q 15 65 18 48 Q 15 30 22 40 Q 20 25 30 35 Q 25 20 40 10 Z" fill="none" stroke="#ff4400" stroke-width="2.5" stroke-linejoin="round"/>
+                        <path d="M 40 35 Q 48 42 45 52 Q 50 45 48 55 Q 50 62 40 66 Q 30 62 32 55 Q 30 45 35 52 Q 32 42 40 35 Z" fill="#ff4400" fill-opacity="0.4" stroke="#ff6600" stroke-width="1.5"/>
+                    </svg>
+                    <div style="color: #ff4400; font-size: 1.4rem; font-weight: bold; text-shadow: 0 0 10px #ff4400; margin-bottom: 0.5rem; text-transform: uppercase; line-height: 1.2;">
+                        FINANCIAL<br>CONTROLLER
+                    </div>
+                    <div style="color: #ff8866; font-size: 1rem; margin-bottom: 1rem;">Advanced Level</div>
+                    <div style="color: #ffffff; font-size: 0.95rem; line-height: 1.6;">
+                        Real-world scenarios<br>
+                        For finance experts<br>
+                        10 rounds · $5,000
+                    </div>
+                    <div style="margin-top: 1.5rem; padding: 0.5rem 1rem; border: 2px solid #ff4400; border-radius: 8px; color: #ff4400; font-size: 1rem;">
+                        START
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de juego - Selección de activo -->
+        <div id="selectAssetScreen" class="screen">
+            <div class="stats-panel">
+                <div class="stat-box">
+                    <div class="stat-label">
+                        <svg width="20" height="20" viewBox="0 0 20 20" style="display: inline-block; vertical-align: middle; filter: drop-shadow(0 0 3px #ff00ff);">
+                            <circle cx="10" cy="10" r="8" fill="none" stroke="#ff00ff" stroke-width="2"/>
+                            <text x="10" y="14" text-anchor="middle" fill="#ff00ff" font-size="12" font-weight="bold">$</text>
+                        </svg>
+                        Your Money
+                    </div>
+                    <div class="stat-value" id="currentMoney">$5,000</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">
+                        <svg width="20" height="20" viewBox="0 0 20 20" style="display: inline-block; vertical-align: middle; filter: drop-shadow(0 0 3px #ff00ff);">
+                            <rect x="2" y="8" width="4" height="10" fill="none" stroke="#ff00ff" stroke-width="1.5"/>
+                            <rect x="8" y="5" width="4" height="13" fill="none" stroke="#ff00ff" stroke-width="1.5"/>
+                            <rect x="14" y="2" width="4" height="16" fill="none" stroke="#ff00ff" stroke-width="1.5"/>
+                        </svg>
+                        Round
+                    </div>
+                    <div class="stat-value" id="currentRound">1/10</div>
+                </div>
+            </div>
+
+            <p class="instruction">CHOOSE AN ASSET:</p>
+
+            <div class="assets-grid">
+                <div class="asset-card" onclick="selectAsset(event, 'ACCIONES', 'stocks')">
+                    <svg class="neon-icon" viewBox="0 0 100 100" style="color: #00ffff;">
+                        <!-- Gráfico de barras ascendente -->
+                        <rect x="10" y="70" width="15" height="20" class="filled"/>
+                        <rect x="30" y="55" width="15" height="35" class="filled"/>
+                        <rect x="50" y="35" width="15" height="55" class="filled"/>
+                        <rect x="70" y="15" width="15" height="75" class="filled"/>
+                        <!-- Flecha arriba -->
+                        <path d="M 90 25 L 90 5 M 90 5 L 85 12 M 90 5 L 95 12" stroke-width="3"/>
+                    </svg>
+                    <div class="asset-name">Stocks<br><span style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Acciones</span></div>
+                </div>
+                <div class="asset-card" onclick="selectAsset(event, 'CRYPTO', 'crypto')">
+                    <svg class="neon-icon" viewBox="0 0 100 100" style="color: #ffff00;">
+                        <!-- Símbolo Bitcoin estilizado -->
+                        <circle cx="50" cy="50" r="35" class="filled"/>
+                        <path d="M 50 20 L 50 80 M 40 20 L 40 80 M 60 20 L 60 80" stroke-width="2"/>
+                        <path d="M 40 35 L 65 35 Q 72 35 72 42 Q 72 49 65 49 L 40 49" stroke-width="3"/>
+                        <path d="M 40 51 L 67 51 Q 75 51 75 59 Q 75 67 67 67 L 40 67" stroke-width="3"/>
+                    </svg>
+                    <div class="asset-name">Crypto<br><span style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Criptomonedas</span></div>
+                </div>
+                <div class="asset-card" onclick="selectAsset(event, 'BONOS', 'bonds')">
+                    <svg class="neon-icon" viewBox="0 0 100 100" style="color: #00ff00;">
+                        <!-- Edificio de banco -->
+                        <rect x="20" y="30" width="60" height="50" class="filled"/>
+                        <rect x="25" y="20" width="50" height="10"/>
+                        <line x1="30" y1="20" x2="30" y2="10" stroke-width="3"/>
+                        <line x1="50" y1="20" x2="50" y2="10" stroke-width="3"/>
+                        <line x1="70" y1="20" x2="70" y2="10" stroke-width="3"/>
+                        <!-- Columnas -->
+                        <line x1="30" y1="30" x2="30" y2="80" stroke-width="4"/>
+                        <line x1="45" y1="30" x2="45" y2="80" stroke-width="4"/>
+                        <line x1="55" y1="30" x2="55" y2="80" stroke-width="4"/>
+                        <line x1="70" y1="30" x2="70" y2="80" stroke-width="4"/>
+                        <!-- Base -->
+                        <rect x="15" y="80" width="70" height="5"/>
+                    </svg>
+                    <div class="asset-name">Bonds<br><span style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Bonos</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de predicción -->
+        <div id="predictionScreen" class="screen">
+            <div class="stats-panel">
+                <div class="stat-box">
+                    <div class="stat-label">
+                        <svg width="20" height="20" viewBox="0 0 20 20" style="display: inline-block; vertical-align: middle; filter: drop-shadow(0 0 3px #ff00ff);">
+                            <circle cx="10" cy="10" r="8" fill="none" stroke="#ff00ff" stroke-width="2"/>
+                            <text x="10" y="14" text-anchor="middle" fill="#ff00ff" font-size="12" font-weight="bold">$</text>
+                        </svg>
+                        Your Money
+                    </div>
+                    <div class="stat-value" id="currentMoney2">$5,000</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">
+                        <svg width="20" height="20" viewBox="0 0 20 20" style="display: inline-block; vertical-align: middle; filter: drop-shadow(0 0 3px #ff00ff);">
+                            <rect x="2" y="8" width="4" height="10" fill="none" stroke="#ff00ff" stroke-width="1.5"/>
+                            <rect x="8" y="5" width="4" height="13" fill="none" stroke="#ff00ff" stroke-width="1.5"/>
+                            <rect x="14" y="2" width="4" height="16" fill="none" stroke="#ff00ff" stroke-width="1.5"/>
+                        </svg>
+                        Round
+                    </div>
+                    <div class="stat-value" id="currentRound2">1/10</div>
+                </div>
+            </div>
+
+            <p class="instruction">YOU CHOSE: <span id="selectedAssetName"></span></p>
+            <div id="selectedAssetIcon" style="margin: 1rem auto;"></div>
+
+            <!-- Pista/Noticia -->
+            <div style="margin: 2rem auto; max-width: 700px; background: rgba(255, 0, 255, 0.1); border: 2px solid #ff00ff; padding: 2rem; border-radius: 15px; box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);">
+                <div style="font-size: 1.3rem; color: #00ffff; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <svg width="30" height="30" viewBox="0 0 30 30" style="filter: drop-shadow(0 0 5px #00ffff);">
+                        <rect x="5" y="5" width="20" height="20" rx="2" fill="none" stroke="#00ffff" stroke-width="2"/>
+                        <line x1="10" y1="10" x2="20" y2="10" stroke="#00ffff" stroke-width="2"/>
+                        <line x1="10" y1="15" x2="20" y2="15" stroke="#00ffff" stroke-width="2"/>
+                        <line x1="10" y1="20" x2="16" y2="20" stroke="#00ffff" stroke-width="2"/>
+                    </svg>
+                    MARKET NEWS:
+                </div>
+                <div id="marketHint" style="font-size: 1.5rem; color: #ffffff; line-height: 1.5; margin-bottom: 0.8rem;"></div>
+                <div style="border-top: 1px solid rgba(255,0,255,0.35); padding-top: 0.8rem;">
+                    
+                    <div id="marketHintEs" style="font-size: 1.1rem; color: rgba(255,255,255,0.65); line-height: 1.5; font-style: italic;"></div>
+                </div>
+            </div>
+
+            <p class="instruction" style="font-size: 2.5rem; margin-top: 2rem;">UP OR DOWN?</p>
+
+            <div class="prediction-buttons">
+                <button class="prediction-button up" onclick="makePrediction('up')">
+                    <svg width="60" height="60" viewBox="0 0 60 60" style="margin-bottom: 10px; filter: drop-shadow(0 0 10px #00ff00);">
+                        <path d="M 30 10 L 30 50 M 30 10 L 20 20 M 30 10 L 40 20" stroke="#00ff00" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    </svg>
+                    <br>UP
+                </button>
+                <button class="prediction-button down" onclick="makePrediction('down')">
+                    <svg width="60" height="60" viewBox="0 0 60 60" style="margin-bottom: 10px; filter: drop-shadow(0 0 10px #ff0000);">
+                        <path d="M 30 50 L 30 10 M 30 50 L 20 40 M 30 50 L 40 40" stroke="#ff0000" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    </svg>
+                    <br>DOWN
+                </button>
+            </div>
+        </div>
+
+        <!-- Pantalla de resultado -->
+        <div id="resultScreen" class="screen">
+            <div class="stats-panel">
+                <div class="stat-box">
+                    <div class="stat-label">
+                        <svg width="20" height="20" viewBox="0 0 20 20" style="display: inline-block; vertical-align: middle; filter: drop-shadow(0 0 3px #ff00ff);">
+                            <circle cx="10" cy="10" r="8" fill="none" stroke="#ff00ff" stroke-width="2"/>
+                            <text x="10" y="14" text-anchor="middle" fill="#ff00ff" font-size="12" font-weight="bold">$</text>
+                        </svg>
+                        Your Money
+                    </div>
+                    <div class="stat-value" id="currentMoney3">$5,000</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">
+                        <svg width="20" height="20" viewBox="0 0 20 20" style="display: inline-block; vertical-align: middle; filter: drop-shadow(0 0 3px #ff00ff);">
+                            <rect x="2" y="8" width="4" height="10" fill="none" stroke="#ff00ff" stroke-width="1.5"/>
+                            <rect x="8" y="5" width="4" height="13" fill="none" stroke="#ff00ff" stroke-width="1.5"/>
+                            <rect x="14" y="2" width="4" height="16" fill="none" stroke="#ff00ff" stroke-width="1.5"/>
+                        </svg>
+                        Round
+                    </div>
+                    <div class="stat-value" id="currentRound3">1/10</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="chartCanvas" height="200"></canvas>
+                <div class="ticker-bar">
+                    <span class="ticker-asset" id="tickerAsset">STCK</span>
+                    <span class="ticker-price" id="tickerPrice">$5,000</span>
+                    <span class="ticker-change" id="tickerChange">+0.00%</span>
+                    <div class="ticker-live">
+                        <div class="ticker-dot"></div>
+                        LIVE
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultMessage" class="result-message"></div>
+
+            <!-- Explicación de la respuesta -->
+            <div id="explanationBox" style="
+                margin: 1rem auto;
+                max-width: 650px;
+                background: rgba(0,0,0,0.5);
+                border: 2px solid #ffff00;
+                border-radius: 12px;
+                padding: 1.2rem 1.5rem;
+                box-shadow: 0 0 20px rgba(255,255,0,0.2);
+                display: none;
+            ">
+                <div style="color: #ffff00; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.15rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg width="16" height="16" viewBox="0 0 16 16" style="filter:drop-shadow(0 0 3px #ffff00);">
+                        <circle cx="8" cy="8" r="7" fill="none" stroke="#ffff00" stroke-width="1.5"/>
+                        <text x="8" y="12" text-anchor="middle" fill="#ffff00" font-size="10" font-weight="bold">i</text>
+                    </svg>
+                    WHY?
+                </div>
+                <div id="explanationText" style="color: #ffffff; font-size: 1.15rem; line-height: 1.6; margin-bottom: 0.8rem;"></div>
+                <div style="border-top: 1px solid rgba(255,255,0,0.3); padding-top: 0.8rem;">
+                    
+                    <div id="explanationTextEs" style="font-size: 1rem; color: rgba(255,255,255,0.65); line-height: 1.6; font-style: italic;"></div>
+                </div>
+            </div>
+
+            <div id="autoNextMessage" style="font-size: 1.3rem; color: #00ffff; margin-top: 1rem;">
+                <span id="countdown">8</span> seconds for the next round...
+                <br>
+                <button onclick="skipCountdown()" style="
+                    margin-top: 0.8rem;
+                    background: transparent;
+                    border: 1px solid #00ffff;
+                    color: #00ffff;
+                    padding: 0.4rem 1.2rem;
+                    font-size: 0.9rem;
+                    cursor: pointer;
+                    border-radius: 6px;
+                    letter-spacing: 0.1rem;
+                    transition: all 0.2s;
+                " onmouseover="this.style.background='rgba(0,255,255,0.15)'" onmouseout="this.style.background='transparent'">
+                    CONTINUE →
+                </button>
+            </div>
+        </div>
+
+        <!-- Pantalla final -->
+        <div id="finalScreen" class="screen">
+            <h1 class="main-title">GAME OVER</h1>
+            
+            <div class="stat-box" style="margin: 2rem auto; max-width: 400px;">
+                <div class="stat-label">
+                    <svg width="25" height="25" viewBox="0 0 25 25" style="display: inline-block; vertical-align: middle; filter: drop-shadow(0 0 3px #ff00ff);">
+                        <circle cx="12.5" cy="12.5" r="10" fill="none" stroke="#ff00ff" stroke-width="2"/>
+                        <text x="12.5" y="17" text-anchor="middle" fill="#ff00ff" font-size="14" font-weight="bold">$</text>
+                    </svg>
+                    Final Balance
+                </div>
+                <div class="stat-value" id="finalMoney">$0</div>
+            </div>
+
+            <div id="finalResult" style="font-size: 2rem; margin: 2rem 0;"></div>
+
+            <button class="neon-button" onclick="goToStart()" style="margin-top: 2rem;">NEW PLAYER</button>
+
+            <div style="margin-top: 3rem; padding: 2rem; background: rgba(0,255,255,0.1); border: 2px solid #00ffff; border-radius: 15px;">
+                <p style="font-size: 1.8rem; color: #00ffff; margin-bottom: 0.5rem; font-weight: bold;">
+                    You've taken your first step into the world of investments!
+                </p>
+                <p style="font-size: 1.5rem; color: #ff00ff; margin-bottom: 1.5rem;">
+                    See you at ACCOUNTING 2027
+                </p>
+                <p style="font-size: 1.3rem; color: #ffffff; margin-bottom: 1rem;">
+                    Interested in studying Accounting?<br>
+                    Discover more about the major:
+                </p>
+                <p style="font-size: 1.4rem; color: #ff00ff; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <svg width="30" height="30" viewBox="0 0 30 30" style="filter: drop-shadow(0 0 5px #ff00ff);">
+                        <!-- Instagram Logo -->
+                        <rect x="5" y="5" width="20" height="20" rx="5" fill="none" stroke="#ff00ff" stroke-width="2"/>
+                        <circle cx="15" cy="15" r="5" fill="none" stroke="#ff00ff" stroke-width="2"/>
+                        <circle cx="21" cy="9" r="1.5" fill="#ff00ff"/>
+                    </svg>
+                    <span style="font-weight: bold;">@accountingcovao</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables del juego
+        let money = 5000;
+        let round = 1;
+        let selectedAssetName = '';
+        let selectedAssetIcon = '';
+        let playerHistory = [];
+        let playerName = '';
+        let gameLevel = 'normal'; // 'normal' o 'financial'
+
+        // =====================
+        // SISTEMA DE LEADERBOARD (in-memory, sin localStorage)
+        // =====================
+        let _leaderboardData = [];
+
+        function getLeaderboard() {
+            return _leaderboardData;
+        }
+
+        function saveToLeaderboard(name, finalMoney) {
+            _leaderboardData.push({ 
+                name: name, 
+                money: finalMoney, 
+                level: gameLevel,
+                date: new Date().toLocaleTimeString() 
+            });
+            _leaderboardData.sort((a, b) => b.money - a.money);
+            _leaderboardData = _leaderboardData.slice(0, 5);
+            return _leaderboardData;
+        }
+
+        function renderLeaderboard(highlightName = '') {
+            const leaderboard = getLeaderboard();
+            const container = document.getElementById('leaderboardList');
+
+            if (leaderboard.length === 0) {
+                container.innerHTML = `
+                    <div class="lb-empty">
+                        No participants yet today.<br>Be the first!
+                    </div>`;
+                return;
+            }
+
+            const posColors = ['top1', 'top2', 'top3'];
+
+            container.innerHTML = leaderboard.map((entry, i) => {
+                const isHighlight = entry.name === highlightName;
+                const posClass = posColors[i] || '';
+                const isFC = entry.level === 'financial';
+
+                let posColor = '#00ffff';
+                if (i === 0) posColor = '#ffff00';
+                if (i === 1) posColor = '#aaaaaa';
+                if (i === 2) posColor = '#ff8800';
+
+                const profit = entry.money - 5000;
+                const profitText = profit >= 0 ? `+$${profit.toLocaleString()}` : `-$${Math.abs(profit).toLocaleString()}`;
+                const profitColor = profit >= 0 ? '#00ff00' : '#ff4444';
+
+                // Ícono de fuego SVG para FC
+                const fcIcon = isFC ? `
+                    <svg width="18" height="18" viewBox="0 0 20 20" style="display:inline-block;vertical-align:middle;margin-left:4px;filter:drop-shadow(0 0 3px #ff4400);" title="Financial Controller Level">
+                        <path d="M 10 2 Q 15 6 13 11 Q 16 8 15 13 Q 17 17 10 19 Q 3 17 5 13 Q 4 8 7 11 Q 5 6 10 2 Z" fill="none" stroke="#ff4400" stroke-width="1.5"/>
+                        <path d="M 10 9 Q 13 12 11 15 Q 10 17 9 15 Q 7 12 10 9 Z" fill="#ff6600" fill-opacity="0.6"/>
+                    </svg>` : '';
+
+                return `
+                    <div class="leaderboard-item ${posClass} ${isHighlight ? 'highlight' : ''}">
+                        <span class="lb-position" style="color: ${posColor}">#${i+1}</span>
+                        <span class="lb-name">${entry.name}${fcIcon}</span>
+                        <span class="lb-money">$${entry.money.toLocaleString()}</span>
+                        <span style="color: ${profitColor}; font-size: 0.9rem; margin-left: 0.5rem;">${profitText}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function clearLeaderboard() {
+            // Mostrar confirmación visual en lugar de confirm() que falla en file://
+            const container = document.getElementById('leaderboardList');
+            container.innerHTML = `
+                <div style="
+                    text-align: center;
+                    padding: 1.5rem;
+                    background: rgba(255,0,0,0.1);
+                    border: 2px solid #ff0000;
+                    border-radius: 10px;
+                ">
+                    <p style="color: #ff4444; font-size: 1.1rem; margin-bottom: 1rem;">
+                        Are you sure you want to clear the Top 5?
+                    </p>
+                    <div style="display: flex; gap: 1rem; justify-content: center;">
+                        <button onclick="confirmClearLeaderboard()" style="
+                            background: #ff0000;
+                            border: 2px solid #ff0000;
+                            color: white;
+                            padding: 0.6rem 1.5rem;
+                            font-size: 1rem;
+                            font-weight: bold;
+                            cursor: pointer;
+                            border-radius: 8px;
+                            letter-spacing: 0.1rem;
+                        ">YES, CLEAR</button>
+                        <button onclick="renderLeaderboard()" style="
+                            background: transparent;
+                            border: 2px solid #00ffff;
+                            color: #00ffff;
+                            padding: 0.6rem 1.5rem;
+                            font-size: 1rem;
+                            font-weight: bold;
+                            cursor: pointer;
+                            border-radius: 8px;
+                            letter-spacing: 0.1rem;
+                        ">CANCEL</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function confirmClearLeaderboard() {
+            _leaderboardData = [];
+            renderLeaderboard();
+        }
+
+        // Crear partículas de fondo
+        // ================================
+        // SISTEMA DE FUEGO EN CANVAS
+        // ================================
+        let fireAnimFrame = null;
+        let fireCanvas = null;
+        let fireCtx = null;
+        let fireParticles = [];
+        let fireEmbers = [];
+
+        function createFireEffect() {
+            document.getElementById('fcGroundGlow').style.display = 'block';
+
+            fireCanvas = document.getElementById('fcFireCanvas');
+            fireCanvas.style.display = 'block';
+
+            // Ajustar tamaño
+            function resizeCanvas() {
+                fireCanvas.width = window.innerWidth;
+                fireCanvas.height = 280;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            fireCanvas._resizeFn = resizeCanvas;
+
+            fireCtx = fireCanvas.getContext('2d');
+            fireParticles = [];
+            fireEmbers = [];
+
+            // Crear partículas de llama
+            function spawnFlameParticle() {
+                const x = Math.random() * fireCanvas.width;
+                const baseH = fireCanvas.height;
+                fireParticles.push({
+                    x: x,
+                    y: baseH,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: -(2.5 + Math.random() * 4),
+                    life: 1.0,
+                    decay: 0.012 + Math.random() * 0.018,
+                    size: 18 + Math.random() * 35,
+                    hue: Math.random() < 0.5 ? 10 + Math.random() * 20 : 30 + Math.random() * 20,
+                    wobble: Math.random() * Math.PI * 2,
+                    wobbleSpeed: 0.05 + Math.random() * 0.08,
+                });
+            }
+
+            // Crear brasas
+            function spawnEmber() {
+                fireEmbers.push({
+                    x: 100 + Math.random() * (fireCanvas.width - 200),
+                    y: fireCanvas.height - 20,
+                    vx: (Math.random() - 0.5) * 2.5,
+                    vy: -(1.5 + Math.random() * 3.5),
+                    life: 1.0,
+                    decay: 0.004 + Math.random() * 0.008,
+                    size: 1.5 + Math.random() * 3.5,
+                    color: Math.random() < 0.6 ? '#ffcc00' : Math.random() < 0.5 ? '#ff8800' : '#ffffff',
+                    gravity: 0.02,
+                });
+            }
+
+            // Spawn inicial
+            for (let i = 0; i < 120; i++) spawnFlameParticle();
+            for (let i = 0; i < 30; i++) spawnEmber();
+
+            function drawFire() {
+                fireCtx.clearRect(0, 0, fireCanvas.width, fireCanvas.height);
+
+                // Spawn nuevas partículas
+                if (Math.random() < 0.85) spawnFlameParticle();
+                if (Math.random() < 0.25) spawnEmber();
+
+                // Dibujar llamas
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const p = fireParticles[i];
+                    p.life -= p.decay;
+
+                    if (p.life <= 0) {
+                        fireParticles.splice(i, 1);
+                        continue;
+                    }
+
+                    p.wobble += p.wobbleSpeed;
+                    p.x += p.vx + Math.sin(p.wobble) * 0.6;
+                    p.y += p.vy;
+                    p.vy *= 0.995;
+                    p.size *= 0.993;
+
+                    // Color según vida: blanco > amarillo > naranja > rojo
+                    let r, g, b;
+                    if (p.life > 0.8) {
+                        // Núcleo blanco-amarillo
+                        r = 255; g = 230; b = 180;
+                    } else if (p.life > 0.55) {
+                        // Amarillo-naranja
+                        const t = (p.life - 0.55) / 0.25;
+                        r = 255;
+                        g = Math.floor(180 * t + 80 * (1 - t));
+                        b = Math.floor(50 * t);
+                    } else if (p.life > 0.3) {
+                        // Naranja-rojo
+                        const t = (p.life - 0.3) / 0.25;
+                        r = 255;
+                        g = Math.floor(100 * t + 20 * (1 - t));
+                        b = 0;
+                    } else {
+                        // Rojo oscuro apagándose
+                        r = Math.floor(200 * p.life / 0.3);
+                        g = 0; b = 0;
+                    }
+
+                    const alpha = p.life * 0.85;
+                    const currentSize = p.size * p.life * 0.5 + p.size * 0.5;
+
+                    // Gradiente radial para cada partícula
+                    const grad = fireCtx.createRadialGradient(
+                        p.x, p.y, 0,
+                        p.x, p.y, currentSize
+                    );
+                    grad.addColorStop(0,   `rgba(${r},${g},${b},${alpha})`);
+                    grad.addColorStop(0.4, `rgba(${r},${Math.max(0,g-40)},${b},${alpha * 0.7})`);
+                    grad.addColorStop(1,   `rgba(${Math.max(0,r-60)},0,0,0)`);
+
+                    fireCtx.beginPath();
+                    fireCtx.arc(p.x, p.y, currentSize, 0, Math.PI * 2);
+                    fireCtx.fillStyle = grad;
+                    fireCtx.fill();
+                }
+
+                // Dibujar brasas
+                for (let i = fireEmbers.length - 1; i >= 0; i--) {
+                    const e = fireEmbers[i];
+                    e.life -= e.decay;
+
+                    if (e.life <= 0) {
+                        fireEmbers.splice(i, 1);
+                        continue;
+                    }
+
+                    e.x += e.vx;
+                    e.y += e.vy;
+                    e.vy += e.gravity; // caída suave
+                    e.vx += (Math.random() - 0.5) * 0.15; // drift lateral
+
+                    const eAlpha = e.life * 0.95;
+                    const eGrad = fireCtx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.size * 2);
+                    eGrad.addColorStop(0, e.color.replace(')', `,${eAlpha})`).replace('rgb', 'rgba').replace('#ffcc00', `rgba(255,210,0,${eAlpha})`).replace('#ff8800', `rgba(255,136,0,${eAlpha})`).replace('#ffffff', `rgba(255,255,255,${eAlpha})`));
+                    eGrad.addColorStop(1, 'rgba(255,80,0,0)');
+
+                    fireCtx.beginPath();
+                    fireCtx.arc(e.x, e.y, e.size * 2, 0, Math.PI * 2);
+                    fireCtx.fillStyle = eGrad;
+                    fireCtx.fill();
+
+                    // Núcleo brillante
+                    fireCtx.beginPath();
+                    fireCtx.arc(e.x, e.y, e.size * 0.5, 0, Math.PI * 2);
+                    fireCtx.fillStyle = `rgba(255,255,220,${eAlpha * 0.9})`;
+                    fireCtx.fill();
+                }
+
+                // Oscurecer la base para dar profundidad
+                const baseGrad = fireCtx.createLinearGradient(0, fireCanvas.height - 40, 0, fireCanvas.height);
+                baseGrad.addColorStop(0, 'rgba(0,0,0,0)');
+                baseGrad.addColorStop(1, 'rgba(0,0,0,0.6)');
+                fireCtx.fillStyle = baseGrad;
+                fireCtx.fillRect(0, fireCanvas.height - 40, fireCanvas.width, 40);
+
+                fireAnimFrame = requestAnimationFrame(drawFire);
+            }
+
+            drawFire();
+        }
+
+        function removeFireEffect() {
+            if (fireAnimFrame) {
+                cancelAnimationFrame(fireAnimFrame);
+                fireAnimFrame = null;
+            }
+            if (fireCanvas && fireCanvas._resizeFn) {
+                window.removeEventListener('resize', fireCanvas._resizeFn);
+            }
+            const canvas = document.getElementById('fcFireCanvas');
+            if (canvas) {
+                canvas.style.display = 'none';
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            document.getElementById('fcGroundGlow').style.display = 'none';
+            fireParticles = [];
+            fireEmbers = [];
+        }
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            for (let i = 0; i < 20; i++) { // Reducido de 50 a 20 para mejor performance
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.background = Math.random() > 0.5 ? '#00ffff' : '#ff00ff';
+                particle.style.animationDelay = Math.random() * 3 + 's';
+                particle.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Pistas simples por tipo de activo
+        // ================================
+        // BANCO DE PREGUNTAS POR ACTIVO
+        // ================================
+        const questions = {
+            'ACCIONES': [
+                { d:'Baja', n:'A tech company announces earnings higher than expected.', ns:'Una empresa tecnológica anuncia que ganó más dinero del esperado este trimestre.', r:'up', e:'Investors buy more shares because the company looks more profitable than expected.', es:'Los inversionistas compran más acciones porque ven que la empresa es más rentable de lo que pensaban.' },
+                { d:'Baja', n:'A company reports a strong drop in its quarterly sales.', ns:'Una empresa reporta que sus ventas cayeron fuertemente comparado con el trimestre anterior.', r:'down', e:'Lower sales mean lower revenue, which can reduce future profits.', es:'Menos ventas significan menos ingresos, lo que puede reducir las ganancias futuras.' },
+                { d:'Baja', n:'A company announces the launch of a highly anticipated new product.', ns:'Una empresa anuncia el lanzamiento de un producto nuevo que el público lleva meses esperando.', r:'up', e:'The market anticipates that the new product will generate more sales and revenue.', es:'El mercado anticipa que el nuevo producto generará más ventas e ingresos para la empresa.' },
+                { d:'Baja', n:'The CEO of a major company resigns without prior notice or clear explanation.', ns:'El director ejecutivo (CEO) de una gran empresa renuncia sin previo aviso ni explicación clara.', r:'down', e:'Investors worry because they do not know who will lead the company or in which direction.', es:'Los inversionistas se preocupan porque no saben quién liderará la empresa ni hacia dónde irá.' },
+                { d:'Baja', n:'A company announces it will pay more money to shareholders per share (dividends).', ns:'Una empresa anuncia que pagará más dinero a sus accionistas por cada acción que poseen (dividendos).', r:'up', e:'Receiving higher payments per share makes the investment more attractive to investors.', es:'Recibir más pagos por acción hace que la inversión sea más atractiva para los inversionistas.' },
+                { d:'Baja', n:'A direct competitor launches a similar product with better quality and a lower price.', ns:'Un competidor directo lanza al mercado un producto similar pero de mejor calidad y menor precio.', r:'down', e:'The company could lose customers to competition, reducing its sales and profits.', es:'La empresa podría perder clientes ante la competencia, reduciendo sus ventas y ganancias.' },
+                { d:'Baja', n:'Financial analysts upgrade a stock rating, recommending to buy it.', ns:'Analistas financieros mejoran su calificación sobre una acción, recomendando comprarla.', r:'up', e:'When experts recommend a stock, more investors become interested in buying it, increasing its price.', es:'Cuando expertos recomiendan una acción, más inversionistas se interesan en comprarla, aumentando su precio.' },
+                { d:'Baja', n:'A serious defect is found in a company\'s best-selling product, which could be dangerous.', ns:'Se descubre un defecto grave en el producto más vendido de una empresa, que podría ser peligroso.', r:'down', e:'The company could face massive returns, lawsuits, and loss of customers.', es:'La empresa podría enfrentar devoluciones masivas, demandas legales y pérdida de clientes.' },
+                { d:'Baja', n:'A judge rules against a company in an important lawsuit that had been in court for months.', ns:'Un juez falla en contra de una empresa en un juicio importante que llevaba meses en los tribunales.', r:'down', e:'Losing the lawsuit may force the company to pay millions in damages, affecting its finances.', es:'Perder el juicio puede obligar a la empresa a pagar millones en indemnizaciones, afectando sus finanzas.' },
+                { d:'Media', n:'A company signs a million-dollar contract to provide services to the government for the next three years.', ns:'Una empresa firma un contrato millonario para proveer servicios al gobierno durante los próximos tres años.', r:'up', e:'A long-term government contract guarantees future revenue, though profitability depends on execution costs.', es:'Un contrato de largo plazo con el gobierno garantiza ingresos futuros, aunque la rentabilidad depende de los costos de ejecución.' },
+                { d:'Media', n:'Authorities open a formal investigation against a company for possible financial irregularities.', ns:'Las autoridades abren una investigación formal contra una empresa por posibles irregularidades financieras.', r:'down', e:'An investigation may lead to fines, legal sanctions, and a loss of investor confidence.', es:'Una investigación puede derivar en multas, sanciones legales y pérdida de confianza de los inversionistas.' },
+                { d:'Media', n:'A company announces it will use part of its profits to buy back its own shares from the market.', ns:'Una empresa anuncia que usará parte de sus ganancias para recomprar sus propias acciones del mercado.', r:'up', e:'By removing shares from the market, each remaining share represents a larger portion of the company and may be worth more.', es:'Al retirar acciones del mercado, cada acción restante representa una porción mayor de la empresa y puede valer más.' },
+                { d:'Media', n:'A company announces the layoff of thousands of employees citing serious financial losses.', ns:'Una empresa anuncia el despido de miles de empleados citando pérdidas y problemas financieros graves.', r:'down', e:'Mass layoffs signal that the company is facing serious difficulties that could worsen.', es:'Los despidos masivos son señal de que la empresa enfrenta dificultades serias que podrían empeorar.' },
+                { d:'Media', n:'Several governments increase investment in artificial intelligence, benefiting tech companies in the sector.', ns:'Varios gobiernos aumentan su inversión en inteligencia artificial, beneficiando a empresas tecnológicas del sector.', r:'up', e:'Greater demand for AI technology can translate into more contracts and sales for companies in the sector.', es:'Mayor demanda de tecnología de IA puede traducirse en más contratos y ventas para las empresas del sector.' },
+                { d:'Media', n:'The central bank raises interest rates to control inflation.', ns:'El banco central del país sube las tasas de interés para controlar la inflación.', r:'down', e:'Higher rates make loans more expensive for companies and consumers, which can reduce sales and corporate profits.', es:'Tasas más altas encarecen los préstamos para empresas y consumidores, lo que puede reducir ventas y ganancias corporativas.' },
+                { d:'Media', n:'A company announces plans to open operations in five new countries in Latin America and Asia.', ns:'Una empresa anuncia planes para abrir operaciones en cinco nuevos países de América Latina y Asia.', r:'up', e:'Expanding into new markets can increase revenue, though it also implies higher costs and uncertainty.', es:'Expandirse a nuevos mercados puede aumentar los ingresos, aunque también implica mayores costos e incertidumbre.' },
+                { d:'Media', n:'The government reports that inflation rose more than expected, affecting the cost of raw materials.', ns:'El gobierno reporta que la inflación subió más de lo esperado, afectando el costo de materias primas.', r:'down', e:'When production costs rise due to inflation, companies\' profit margins shrink.', es:'Cuando los costos de producción suben por la inflación, los márgenes de ganancia de las empresas se reducen.' },
+                { d:'Media', n:'A company signs a strategic alliance with a globally recognized firm to develop new products.', ns:'Una empresa firma una alianza estratégica con una compañía reconocida mundialmente para desarrollar nuevos productos.', r:'up', e:'An alliance with a recognized company can open new markets, improve technology, and boost market confidence.', es:'Una alianza con una empresa reconocida puede abrir nuevos mercados, mejorar tecnología y aumentar la confianza del mercado.' },
+                { d:'Alta', n:'A company reports record revenue this quarter but warns next quarter will be significantly worse.', ns:'Una empresa reporta ingresos récord este trimestre, pero advierte que el próximo trimestre será significativamente peor.', r:'down', e:'In the stock market, the future matters more than the present: if the company anticipates bad results, investors sell even when today is good.', es:'En bolsa, el futuro vale más que el presente: si la empresa anticipa resultados malos, los inversionistas venden aunque hoy sea bueno.' },
+                { d:'Alta', n:'A company cuts operating costs by 20%, but simultaneously reports a 30% drop in product demand.', ns:'Una empresa logra reducir sus costos operativos un 20%, pero simultáneamente reporta que la demanda de sus productos cayó un 30%.', r:'down', e:'Saving on costs does not compensate for losing sales: lower demand affects total revenue more than what is saved in expenses.', es:'Ahorrar en costos no compensa perder ventas: menos demanda afecta más los ingresos totales que lo que se ahorra en gastos.' },
+            ],
+            'CRYPTO': [
+                { d:'Baja', n:'One of the world\'s largest payment platforms announces it will accept Bitcoin as a payment method.', ns:'Una de las plataformas de pagos más grandes del mundo anuncia que comenzará a aceptar Bitcoin como forma de pago.', r:'up', e:'When more companies accept a cryptocurrency as payment, its real-world utility and demand increase.', es:'Cuando más empresas aceptan una criptomoneda como pago, aumenta su utilidad y demanda real en el mercado.' },
+                { d:'Baja', n:'A country with millions of crypto users announces laws that strongly restrict its buying and selling.', ns:'Un país con millones de usuarios de cripto anuncia leyes que limitan fuertemente su compra y venta.', r:'down', e:'Government restrictions reduce the number of people who can invest, lowering demand and price.', es:'Las restricciones gubernamentales reducen la cantidad de personas que pueden invertir, bajando la demanda y el precio.' },
+                { d:'Baja', n:'Hackers steal hundreds of millions of dollars from one of the world\'s most used crypto exchanges.', ns:'Hackers roban cientos de millones de dólares de uno de los exchanges de criptomonedas más usados del mundo.', r:'down', e:'A massive hack triggers fear about the security of the crypto system and causes panic selling.', es:'Un hackeo masivo genera miedo sobre la seguridad del sistema cripto y provoca ventas masivas por pánico.' },
+                { d:'Baja', n:'A Fortune 500 company announces it will buy one billion dollars in Bitcoin as a corporate reserve.', ns:'Una empresa Fortune 500 anuncia que comprará Bitcoin por valor de mil millones de dólares como reserva corporativa.', r:'up', e:'When large companies buy crypto, it generates institutional confidence and increases demand for the asset.', es:'Cuando empresas grandes compran cripto, genera confianza institucional y aumenta la demanda del activo.' },
+                { d:'Baja', n:'A popular cryptocurrency network suffers serious technical failures that prevent transactions for hours.', ns:'La red de una criptomoneda popular sufre fallas técnicas graves que impiden procesar transacciones por horas.', r:'down', e:'If the network does not work properly, users lose confidence in that cryptocurrency and may sell their positions.', es:'Si la red no funciona bien, los usuarios pierden confianza en esa criptomoneda y pueden vender sus posiciones.' },
+                { d:'Baja', n:'A very popular crypto wallet admits it lost thousands of users\' funds due to a security error.', ns:'Una billetera cripto muy popular admite que perdió los fondos de miles de usuarios por un error de seguridad.', r:'down', e:'Losing user funds destroys trust in the crypto ecosystem and triggers mass selling out of fear.', es:'Perder fondos de usuarios destruye la confianza en el ecosistema cripto y genera ventas masivas por miedo.' },
+                { d:'Baja', n:'It is discovered that a crypto project lied about having one million active users when it actually had only ten thousand.', ns:'Se descubre que un proyecto cripto mintió sobre tener un millón de usuarios activos cuando en realidad tenía apenas diez mil.', r:'down', e:'Fraud destroys the credibility of the project; investors sell immediately upon losing confidence.', es:'El fraude destruye la credibilidad del proyecto; los inversionistas venden inmediatamente al perder la confianza.' },
+                { d:'Media', n:'A major cryptocurrency launches an update that makes transactions ten times faster and reduces fees by 80%.', ns:'Una criptomoneda importante lanza una actualización que hace las transacciones diez veces más rápidas y reduce las comisiones un 80%.', r:'up', e:'Real technical improvements make the network more useful and attractive, which can bring more users and investors.', es:'Mejoras técnicas reales hacen la red más útil y atractiva, lo que puede traer más usuarios e inversionistas.' },
+                { d:'Media', n:'US regulators are about to approve the first cryptocurrency-based investment fund (ETF).', ns:'Los reguladores de Estados Unidos están a punto de aprobar el primer fondo de inversión (ETF) basado en criptomonedas.', r:'up', e:'A crypto ETF allows traditional investors to easily access the market, increasing demand.', es:'Un ETF cripto permite que inversionistas tradicionales accedan fácilmente al mercado, aumentando la demanda.' },
+                { d:'Media', n:'A major country\'s financial authority announces formal investigations against several crypto exchanges for possible fraud.', ns:'La autoridad financiera de un país importante anuncia investigaciones formales contra varios exchanges de criptomonedas por posibles fraudes.', r:'down', e:'Regulatory investigations create uncertainty and fear in the market, causing many to sell their positions.', es:'Las investigaciones regulatorias generan incertidumbre y miedo en el mercado, provocando que muchos vendan sus posiciones.' },
+                { d:'Media', n:'A blockchain network reaches one million daily active users thanks to its integration into popular video games.', ns:'Una red blockchain alcanza un millón de usuarios activos diarios gracias a su integración en videojuegos populares.', r:'up', e:'The more people use a blockchain in real applications, the more valuable the associated cryptocurrency becomes.', es:'Cuanta más gente use una blockchain en aplicaciones reales, más valiosa se vuelve la criptomoneda asociada.' },
+                { d:'Media', n:'The government reports that inflation fell to its lowest level in two years, generating optimism in financial markets.', ns:'El gobierno reporta que la inflación bajó al nivel más bajo en dos años, generando optimismo en los mercados financieros.', r:'up', e:'With lower inflation, investors seek higher-risk, higher-potential assets like cryptocurrencies.', es:'Con menor inflación, los inversionistas buscan activos de mayor riesgo y potencial como las criptomonedas.' },
+                { d:'Media', n:'The central bank raises interest rates to their highest level in ten years to curb inflation.', ns:'El banco central sube las tasas de interés al nivel más alto en diez años para frenar la inflación.', r:'down', e:'High interest rates make safe bank deposits more attractive, reducing appetite for risky assets like crypto.', es:'Tasas de interés altas hacen más atractivos los depósitos bancarios seguros, reduciendo el apetito por activos riesgosos como el cripto.' },
+                { d:'Media', n:'A cryptocurrency announces it will permanently destroy 10% of all its tokens in circulation (token burn).', ns:'Una criptomoneda anuncia que destruirá permanentemente el 10% de todos sus tokens en circulación (quema de tokens).', r:'up', e:'Reducing the number of available tokens can increase the price if demand stays the same or grows.', es:'Reducir la cantidad de tokens disponibles puede aumentar el precio si la demanda se mantiene igual o crece.' },
+                { d:'Media', n:'A blockchain network signs agreements with three international banks to process cross-border payments using its technology.', ns:'Una red blockchain firma acuerdos con tres bancos internacionales para procesar pagos entre países usando su tecnología.', r:'up', e:'Integrating into the traditional financial system gives legitimacy and increases real-world use of the cryptocurrency.', es:'Integrarse al sistema financiero tradicional da legitimidad y aumenta el uso real de la criptomoneda.' },
+                { d:'Alta', n:'Large investment funds are detected moving billions in cryptocurrencies to exchanges, which historically precedes massive selling.', ns:'Se detecta que grandes fondos de inversión han movido miles de millones en criptomonedas hacia exchanges, lo que históricamente precede ventas masivas.', r:'down', e:'When major investors move crypto to exchanges it is to sell; this usually triggers price drops.', es:'Cuando los grandes inversores mueven cripto a exchanges es para vender; esto suele generar caídas de precio.' },
+                { d:'Alta', n:'On-chain data shows large investors are withdrawing their cryptocurrencies from exchanges to cold storage wallets.', ns:'Datos en cadena (on-chain) muestran que grandes inversores están retirando sus criptomonedas de los exchanges hacia billeteras privadas de almacenamiento frío.', r:'up', e:'Withdrawing crypto from exchanges reduces the supply available for sale; historically this precedes price increases.', es:'Retirar cripto de los exchanges reduce la oferta disponible para venta; históricamente esto precede subidas de precio.' },
+                { d:'Alta', n:'One of the most widely used stablecoins in the world, which should always be worth $1, temporarily falls to $0.87 causing widespread panic.', ns:'Una de las stablecoins más usadas del mundo, que debería valer siempre $1, cae temporalmente a $0.87 generando pánico generalizado.', r:'down', e:'When a stablecoin loses its peg, investors fear a collapse of the ecosystem and sell all their crypto assets.', es:'Cuando una stablecoin pierde su paridad, los inversionistas temen un colapso del ecosistema y venden todos sus activos cripto.' },
+                { d:'Alta', n:'Bitcoin breaks with high buying volume the $50,000 level that had resisted as a ceiling for months (key resistance).', ns:'Bitcoin rompe con alto volumen de compra el nivel de $50,000 que había resistido como techo durante meses (resistencia clave).', r:'up', e:'Breaking a resistance level with high volume confirms real buying strength; technically suggests the price will continue rising.', es:'Romper una resistencia con alto volumen confirma fuerza compradora real; técnicamente sugiere que el precio continuará subiendo.' },
+                { d:'Alta', n:'Bitcoin falls with high selling volume below $40,000, a level that had served as a price floor for months (key support).', ns:'Bitcoin cae con alto volumen de venta por debajo de $40,000, nivel que había funcionado como piso de precio por meses (soporte clave).', r:'down', e:'Losing a key support level with high volume confirms strong selling pressure; technically suggests further declines.', es:'Perder un soporte clave con alto volumen confirma presión vendedora fuerte; técnicamente sugiere caídas adicionales.' },
+            ],
+            'BONOS': [
+                { d:'Baja', n:'The construction sector shows a strong recovery. A construction company issues bonds to finance new projects.', ns:'El sector de construcción presenta un repunte. Una constructora emite bonos para financiar nuevos proyectos.', r:'up', e:'A growing sector attracts investors who want to lend money, increasing demand for bonds.', es:'Un sector en crecimiento atrae inversionistas que quieren prestar dinero, aumentando la demanda de bonos.' },
+                { d:'Baja', n:'The central bank announces it will raise interest rates, making it more expensive to borrow money.', ns:'El banco central anuncia que subirá las tasas de interés, haciendo más caro pedir dinero prestado.', r:'down', e:'Higher rates mean new bonds pay more, making existing bonds less valuable.', es:'Tasas más altas significan que los bonos nuevos pagan más, haciendo que los existentes pierdan valor.' },
+                { d:'Baja', n:'The central bank announces lower interest rates, making it cheaper to borrow money.', ns:'El banco central anuncia una bajada de tasas de interés, haciendo más barato pedir dinero prestado.', r:'up', e:'When the central bank lowers rates, existing bonds become more attractive and rise in value.', es:'Cuando el banco central baja las tasas, los bonos existentes se vuelven más atractivos y suben de valor.' },
+                { d:'Baja', n:'The government reports that inflation rose strongly this month.', ns:'El gobierno reporta que la inflación subió fuertemente este mes.', r:'down', e:'High inflation reduces the real value of the fixed payments a bond makes.', es:'La inflación alta reduce el valor real de los pagos fijos que hace un bono.' },
+                { d:'Baja', n:'A company that issued bonds announces it is doing very well financially.', ns:'Una empresa que emitió bonos anuncia que le está yendo muy bien financieramente.', r:'up', e:'If the company is doing well, there is less risk it will fail to pay its bonds.', es:'Si la empresa va bien, hay menos riesgo de que no pueda pagar sus bonos.' },
+                { d:'Baja', n:'A company that issued bonds says it does not have enough money to pay its debts next month.', ns:'Una empresa que emitió bonos dice que no tiene suficiente dinero para pagar sus deudas el próximo mes.', r:'down', e:'If the company cannot pay, investors may lose their money, so they sell the bonds quickly.', es:'Si la empresa no puede pagar, los inversionistas pueden perder su dinero, por lo que venden rápido.' },
+                { d:'Media', n:'A credit rating agency improves a country\'s financial score, saying it is safer to lend money to.', ns:'Una agencia calificadora mejora la puntuación financiera de un país, diciendo que es más seguro prestarle dinero.', r:'up', e:'A better score means more people trust the country will pay back, so they want to buy its bonds.', es:'Una mejor puntuación significa que más gente confía en que el país pagará, por lo que quieren comprar sus bonos.' },
+                { d:'Media', n:'A credit rating agency lowers a company\'s financial score due to poor results.', ns:'Una agencia calificadora baja la puntuación financiera de una empresa por malos resultados.', r:'down', e:'A lower score means higher risk of not getting paid, so investors sell the bonds.', es:'Una puntuación más baja significa mayor riesgo de no cobrar, por lo que los inversionistas venden los bonos.' },
+                { d:'Media', n:'The government announces it reduced spending and owes less money — but will this cause interest rates to rise or fall?', ns:'El gobierno anuncia que redujo sus gastos y debe menos dinero. ¿Las tasas de interés suben o bajan?', r:'down', e:'Less government borrowing reduces demand for money, which can push interest rates down and reduce bond yields.', es:'Menos endeudamiento del gobierno reduce la demanda de dinero, lo que puede bajar las tasas y reducir el rendimiento de los bonos.' },
+                { d:'Media', n:'The government announces it needs to borrow much more money to cover its expenses — will interest rates go up or down?', ns:'El gobierno anuncia que necesita pedir prestado mucho más dinero. ¿Las tasas de interés suben o bajan?', r:'up', e:'More government borrowing increases demand for money, pushing interest rates up and making bonds more attractive.', es:'Más endeudamiento del gobierno aumenta la demanda de dinero, subiendo las tasas y haciendo los bonos más atractivos.' },
+                { d:'Media', n:'A financial crisis scares investors and they look for safe places to put their money.', ns:'Una crisis financiera asusta a los inversionistas y buscan lugares seguros para poner su dinero.', r:'up', e:'When people are scared, they buy bonds because they are considered a safe investment.', es:'Cuando la gente tiene miedo, compra bonos porque se consideran una inversión segura.' },
+                { d:'Media', n:'The stock market rises strongly and investors feel confident taking more risks.', ns:'La bolsa sube con fuerza y los inversionistas se sienten confiados tomando más riesgos.', r:'down', e:'When stocks are doing well, investors move money out of bonds to earn higher returns.', es:'Cuando las acciones van bien, los inversionistas sacan dinero de los bonos para ganar más.' },
+                { d:'Media', n:'A company pays back part of its bond debt early, before it was due.', ns:'Una empresa paga parte de su deuda en bonos antes de tiempo, antes de la fecha límite.', r:'up', e:'Paying early shows the company has strong finances and is unlikely to default.', es:'Pagar antes muestra que la empresa tiene finanzas sólidas y es poco probable que incumpla.' },
+                { d:'Media', n:'A country faces serious political problems that hurt its economy and create uncertainty.', ns:'Un país enfrenta serios problemas políticos que dañan su economía y generan incertidumbre.', r:'down', e:'Political instability makes investors nervous about whether the country can pay its debts.', es:'La inestabilidad política pone nerviosos a los inversionistas sobre si el país puede pagar sus deudas.' },
+                { d:'Media', n:'A company offers bonds and receives twice as many purchase requests as bonds available.', ns:'Una empresa ofrece bonos y recibe el doble de solicitudes de compra que bonos disponibles.', r:'up', e:'High demand shows investors trust the company and want to lend it money.', es:'Alta demanda muestra que los inversionistas confían en la empresa y quieren prestarle dinero.' },
+                { d:'Media', n:'The government tries to sell bonds but struggles to find enough buyers.', ns:'El gobierno intenta vender bonos pero tiene dificultades para encontrar suficientes compradores.', r:'down', e:'Lack of buyers signals low confidence in the government\'s ability to pay back.', es:'La falta de compradores señala poca confianza en la capacidad del gobierno para pagar.' },
+                { d:'Alta', n:'The central bank hints it may cut rates at its next meeting if inflation keeps falling, but has not confirmed anything yet.', ns:'El banco central insinúa que podría bajar las tasas en su próxima reunión si la inflación sigue bajando, pero no ha confirmado nada.', r:'up', e:'Investors buy bonds now expecting them to rise in price once the rate cut is officially confirmed.', es:'Los inversionistas compran bonos ahora esperando que suban de precio una vez que el recorte sea confirmado oficialmente.' },
+                { d:'Alta', n:'The central bank surprises everyone by saying rates will stay high for at least two more years, longer than expected.', ns:'El banco central sorprende a todos diciendo que las tasas se mantendrán altas por al menos dos años más, más tiempo del esperado.', r:'down', e:'Rates staying high longer makes new bonds more attractive, reducing the value of existing lower-rate bonds.', es:'Las tasas altas por más tiempo hacen los bonos nuevos más atractivos, reduciendo el valor de los bonos existentes con tasas menores.' },
+                { d:'Alta', n:'Unemployment rises sharply, and analysts believe this will force the central bank to cut rates to help the economy.', ns:'El desempleo sube fuertemente, y los analistas creen que esto obligará al banco central a bajar las tasas para ayudar a la economía.', r:'up', e:'If the central bank cuts rates to fight unemployment, existing bonds become more valuable.', es:'Si el banco central baja tasas para combatir el desempleo, los bonos existentes se vuelven más valiosos.' },
+                { d:'Alta', n:'Inflation rises in the market as a result of economic policy measures. Will interest rates go up or down?', ns:'Existe inflación en el mercado producto de las medidas económicas. ¿Las tasas de interés suben o bajan?', r:'down', e:'When inflation rises, the central bank usually raises interest rates to control it, which hurts existing bond prices.', es:'Cuando hay inflación, el banco central suele subir las tasas para controlarla, lo que perjudica el precio de los bonos existentes.' },
+            ],
+        };
+
+        // Construir 10 preguntas ordenadas: 4 Baja + 4 Media + 2 Alta
+        let gameQuestions = [];
+        let currentQuestion = null;
+
+        function buildGameQuestions(assetName) {
+            const all  = questions[assetName];
+            const low  = all.filter(q => q.d === 'Baja').sort(() => Math.random() - 0.5);
+            const med  = all.filter(q => q.d === 'Media').sort(() => Math.random() - 0.5);
+            const high = all.filter(q => q.d === 'Alta').sort(() => Math.random() - 0.5);
+            gameQuestions = [...low.slice(0,4), ...med.slice(0,4), ...high.slice(0,2)];
+        }
+
+        let skipCountdownFn = null;
+
+        function skipCountdown() {
+            if (skipCountdownFn) skipCountdownFn();
+        }
+
+        let currentHintDirection = '';
+        let usedHints = [];
+
+        function showHint(assetName) {
+            const q = gameQuestions[round - 1];
+            if (!q) return;
+            currentQuestion = q;
+            currentHintDirection = q.r;
+            document.getElementById('marketHint').textContent = q.n;
+            document.getElementById('marketHintEs').textContent = q.ns || '';
+        }
+
+        function playSound(type) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'click') {
+                oscillator.frequency.value = 800;
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'win') {
+                oscillator.frequency.value = 1200;
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } else if (type === 'lose') {
+                oscillator.frequency.value = 200;
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            }
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function showLevelSelect() {
+            // Validar nombre
+            const nameInput = document.getElementById('playerName');
+            const name = nameInput.value.trim();
+            
+            if (!name) {
+                nameInput.style.borderColor = '#ff0000';
+                nameInput.style.boxShadow = '0 0 15px rgba(255,0,0,0.5)';
+                nameInput.placeholder = '⚠️ Please enter your name first!';
+                setTimeout(() => {
+                    nameInput.style.borderColor = '#ff00ff';
+                    nameInput.style.boxShadow = '0 0 10px rgba(255,0,255,0.3)';
+                    nameInput.placeholder = 'Your name here...';
+                }, 2000);
+                return;
+            }
+
+            playerName = name;
+            // Mostrar nombre en pantalla de nivel
+            document.getElementById('welcomeName').textContent = name;
+            playSound('click');
+            showScreen('levelSelectScreen');
+        }
+
+        function applyTheme(level) {
+            if (level === 'financial') {
+                document.body.classList.add('fc-mode');
+                document.querySelectorAll('.stat-box').forEach(b => b.classList.add('fc-stat-box'));
+                document.querySelectorAll('.stat-label').forEach(b => b.classList.add('fc-stat-label'));
+                document.querySelectorAll('.stat-value').forEach(b => b.classList.add('fc-stat-value'));
+                document.querySelectorAll('.asset-card').forEach(b => b.classList.add('fc-asset-card'));
+                document.querySelectorAll('.instruction').forEach(b => b.classList.add('fc-instruction'));
+                createFireEffect();
+            } else {
+                document.body.classList.remove('fc-mode');
+                document.querySelectorAll('.stat-box').forEach(b => b.classList.remove('fc-stat-box'));
+                document.querySelectorAll('.stat-label').forEach(b => b.classList.remove('fc-stat-label'));
+                document.querySelectorAll('.stat-value').forEach(b => b.classList.remove('fc-stat-value'));
+                document.querySelectorAll('.asset-card').forEach(b => b.classList.remove('fc-asset-card'));
+                document.querySelectorAll('.instruction').forEach(b => b.classList.remove('fc-instruction'));
+                removeFireEffect();
+            }
+        }
+
+        function startGame(level) {
+            gameLevel = level || 'normal';
+            playSound('click');
+            money = 5000;
+            round = 1;
+            playerHistory = [];
+            selectedAssetName = '';
+            selectedAssetIcon = '';
+            usedHints = [];
+            updateStats();
+            applyTheme(gameLevel);
+            
+            // Mostrar botón de reinicio
+            document.getElementById('restartBtn').style.display = 'block';
+            
+            // Actualizar header del activo según nivel
+            updateScreenHeaders();
+
+            showScreen('selectAssetScreen');
+        }
+
+        function updateScreenHeaders() {
+            const isFC = gameLevel === 'financial';
+            const color = isFC ? '#ff4400' : '#ff00ff';
+            
+            // Actualizar instrucción de selección
+            const instrEl = document.querySelector('#selectAssetScreen .instruction');
+            if (instrEl) {
+                instrEl.innerHTML = 'CHOOSE AN ASSET:';
+                instrEl.style.color = color;
+            }
+
+            // Actualizar caja de noticias
+            const hintBox = document.getElementById('hintBox');
+            if (hintBox) {
+                hintBox.style.borderColor = isFC ? '#ff4400' : '#ff00ff';
+                hintBox.style.background = isFC ? 'rgba(255,60,0,0.1)' : 'rgba(255,0,255,0.1)';
+            }
+
+            const hintTitle = document.getElementById('hintTitle');
+            if (hintTitle) {
+                hintTitle.style.color = isFC ? '#ff8800' : '#00ffff';
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('currentMoney').textContent = '$' + money.toLocaleString();
+            document.getElementById('currentMoney2').textContent = '$' + money.toLocaleString();
+            document.getElementById('currentMoney3').textContent = '$' + money.toLocaleString();
+            document.getElementById('currentRound').textContent = round + '/10';
+            document.getElementById('currentRound2').textContent = round + '/10';
+            document.getElementById('currentRound3').textContent = round + '/10';
+        }
+
+        function selectAsset(evt, name, iconType) {
+            playSound('click');
+            
+            // Guardar el activo para TODO el juego
+            selectedAssetName = name;
+            selectedAssetIcon = iconType;
+            
+            // Obtener la card clickeada
+            const clickedCard = evt.currentTarget;
+            
+            // Visual feedback
+            document.querySelectorAll('.asset-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            clickedCard.classList.add('selected');
+            
+            setTimeout(() => {
+                // Clonar el ícono para usar en todas las rondas
+                const iconSvg = clickedCard.querySelector('.neon-icon');
+                if (iconSvg) {
+                    const clonedIcon = iconSvg.cloneNode(true);
+                    clonedIcon.style.width = '80px';
+                    clonedIcon.style.height = '80px';
+                    clonedIcon.style.display = 'inline-block';
+                    const iconContainer = document.getElementById('selectedAssetIcon');
+                    iconContainer.innerHTML = '';
+                    iconContainer.appendChild(clonedIcon);
+                }
+
+                // Construir las 10 preguntas para este activo
+                buildGameQuestions(name);
+
+                // Ir a la primera predicción
+                startPredictionRound();
+            }, 300);
+        }
+        
+        function startPredictionRound() {
+            // Limpiar y mostrar solo el nombre del activo, sin ningún badge
+            const nameEl = document.getElementById('selectedAssetName');
+            nameEl.innerHTML = '';
+            nameEl.textContent = selectedAssetName;
+
+            // Mostrar pista
+            showHint(selectedAssetName);
+
+            // Mostrar pantalla de predicción
+            showScreen('predictionScreen');
+        }
+
+        function makePrediction(direction) {
+            playSound('click');
+            
+            // El mercado sigue la dirección de la pista 60% del tiempo
+            // Esto hace el juego educativo pero no 100% predecible
+            const marketDirection = currentHintDirection;
+            const won = direction === marketDirection;
+            
+            // Calcular cambio de dinero
+            // Calcular premio/penalización según dificultad de la pregunta
+            const diff = currentQuestion ? currentQuestion.d : 'Baja';
+            const rewards = { 'Baja': [500, -250], 'Media': [1000, -500], 'Alta': [2000, -1000] };
+            const [prize, penalty] = rewards[diff] || [500, -250];
+            const change = won ? prize : penalty;
+            money += change;
+            
+            // Guardar en historial
+            playerHistory.push({
+                round: round,
+                asset: selectedAssetName,
+                prediction: direction,
+                result: marketDirection,
+                won: won,
+                money: money
+            });
+            
+            // Mostrar resultado
+            showResult(marketDirection, won, change, diff);
+        }
+
+        function showResult(marketDirection, won, change, diff) {
+            showScreen('resultScreen');
+            updateStats();
+            
+            // Dibujar gráfica animada
+            drawChart(marketDirection);
+            
+            // Badge de dificultad en resultado
+            const diffColors = { 'Baja': '#00ff88', 'Media': '#ffff00', 'Alta': '#ff4400' };
+            const diffColor = diffColors[diff] || '#00ffff';
+            const diffLabel = `<span style="font-size:0.85rem; padding:2px 10px; border-radius:4px; background:${diffColor}22; border:1px solid ${diffColor}; color:${diffColor}; vertical-align:middle; margin-left:6px;">${diff}</span>`;
+
+            // Mostrar mensaje de resultado
+            const resultMessage = document.getElementById('resultMessage');
+            if (won) {
+                resultMessage.className = 'result-message win';
+                resultMessage.innerHTML = `
+                    <svg width="80" height="80" viewBox="0 0 80 80" style="display:inline-block; margin-bottom:1rem; filter:drop-shadow(0 0 15px #00ff00);">
+                        <circle cx="40" cy="40" r="35" fill="none" stroke="#00ff00" stroke-width="4"/>
+                        <path d="M 20 40 L 35 55 L 60 25" stroke="#00ff00" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <br>YOU GOT IT RIGHT!<br>
+                    <span style="font-size:2.5rem;">+$${Math.abs(change).toLocaleString()}</span>
+                `;
+                playSound('win');
+                createWinParticles();
+            } else {
+                resultMessage.className = 'result-message lose';
+                const correctText = currentQuestion && currentQuestion.r === 'up' ? '⬆ UP' : '⬇ DOWN';
+                resultMessage.innerHTML = `
+                    <svg width="80" height="80" viewBox="0 0 80 80" style="display:inline-block; margin-bottom:1rem; filter:drop-shadow(0 0 15px #ff0000);">
+                        <circle cx="40" cy="40" r="35" fill="none" stroke="#ff0000" stroke-width="4"/>
+                        <path d="M 25 25 L 55 55 M 55 25 L 25 55" stroke="#ff0000" stroke-width="6" stroke-linecap="round"/>
+                    </svg>
+                    <br>WRONG!<br>
+                    <span style="font-size:2.5rem;">-$${Math.abs(change).toLocaleString()}</span>
+                    <br><span style="font-size:1rem; color:#ffaa00;">The correct answer was: <strong>${correctText}</strong></span>
+                `;
+                playSound('lose');
+            }
+
+            // Mostrar explicación bilingüe
+            const explanationBox  = document.getElementById('explanationBox');
+            const explanationText = document.getElementById('explanationText');
+            const explanationTextEs = document.getElementById('explanationTextEs');
+            if (currentQuestion && currentQuestion.e) {
+                explanationText.textContent = currentQuestion.e;
+                explanationTextEs.textContent = currentQuestion.es || '';
+                explanationBox.style.display = 'block';
+            } else {
+                explanationBox.style.display = 'none';
+            }
+
+            // Countdown de 8 segundos con botón continuar
+            const isLast = round >= 10;
+            const nextLabel = isLast ? 'resultado final' : 'siguiente ronda';
+            document.getElementById('autoNextMessage').innerHTML = `
+                <span id="countdown">8</span> segundos para ver ${nextLabel}...
+                <br>
+                <button onclick="skipCountdown()" style="
+                    margin-top: 0.8rem;
+                    background: transparent;
+                    border: 1px solid #00ffff;
+                    color: #00ffff;
+                    padding: 0.4rem 1.2rem;
+                    font-size: 0.9rem;
+                    cursor: pointer;
+                    border-radius: 6px;
+                    letter-spacing: 0.1rem;
+                " onmouseover="this.style.background='rgba(0,255,255,0.15)'" onmouseout="this.style.background='transparent'">
+                    CONTINUE →
+                </button>
+            `;
+
+            startCountdown(isLast ? showFinalScreen : nextRound);
+        }
+
+        function startCountdown(callback) {
+            let timeLeft = 8;
+            const getEl = () => document.getElementById('countdown');
+            if (getEl()) getEl().textContent = timeLeft;
+
+            // Permitir saltar
+            skipCountdownFn = () => {
+                clearInterval(interval);
+                skipCountdownFn = null;
+                callback();
+            };
+
+            const interval = setInterval(() => {
+                timeLeft--;
+                if (getEl()) getEl().textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    skipCountdownFn = null;
+                    callback();
+                }
+            }, 1000);
+        }
+
+        function drawChart(direction) {
+            const canvas = document.getElementById('chartCanvas');
+            const ctx = canvas.getContext('2d');
+            const isUp = direction === 'up';
+            const isFC = gameLevel === 'financial';
+
+            // Colores según nivel y dirección
+            const lineColor   = isUp ? '#00ff88' : '#ff4444';
+            const glowColor   = isUp ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)';
+            const areaColor   = isUp ? 'rgba(0,255,136,0.12)' : 'rgba(255,68,68,0.12)';
+            const borderColor = isFC ? '#ff4400' : '#00ffff';
+
+            // Ajustar tamaño del canvas
+            canvas.width  = canvas.offsetWidth || 600;
+            canvas.height = 200;
+
+            // Generar puntos de precio realistas
+            const totalPoints = 60;
+            const prices = [];
+            let price = 5000 + (Math.random() * 200 - 100);
+            prices.push(price);
+
+            for (let i = 1; i < totalPoints; i++) {
+                const trend = isUp ? 0.6 : -0.6;
+                const noise = (Math.random() - 0.5) * 180;
+                const momentum = trend * (30 + Math.random() * 60);
+                price += momentum + noise;
+                prices.push(price);
+            }
+
+            const minP  = Math.min(...prices);
+            const maxP  = Math.max(...prices);
+            const range = maxP - minP || 1;
+
+            const pad   = { top: 20, bottom: 30, left: 50, right: 20 };
+            const W     = canvas.width  - pad.left - pad.right;
+            const H     = canvas.height - pad.top  - pad.bottom;
+
+            function toX(i) { return pad.left + (i / (totalPoints - 1)) * W; }
+            function toY(p) { return pad.top  + H - ((p - minP) / range) * H; }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Fondo oscuro
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            roundRect(ctx, 0, 0, canvas.width, canvas.height, 12);
+            ctx.fill();
+
+            // Borde neón
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth   = 1.5;
+            ctx.shadowColor = borderColor;
+            ctx.shadowBlur  = 8;
+            roundRect(ctx, 0, 0, canvas.width, canvas.height, 12);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Grid horizontal sutil
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.lineWidth   = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = pad.top + (H / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(pad.left, y);
+                ctx.lineTo(pad.left + W, y);
+                ctx.stroke();
+            }
+
+            // Etiquetas de precio en eje Y
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.font      = '11px Courier New';
+            ctx.textAlign = 'right';
+            for (let i = 0; i <= 4; i++) {
+                const val = minP + (range / 4) * (4 - i);
+                const y   = pad.top + (H / 4) * i;
+                ctx.fillText('$' + Math.round(val).toLocaleString(), pad.left - 6, y + 4);
+            }
+
+            // Animación de dibujo progresivo
+            let progress = 0;
+            const totalFrames = 50;
+
+            function animate() {
+                progress++;
+                const end = Math.floor((progress / totalFrames) * totalPoints);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Fondo
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                roundRect(ctx, 0, 0, canvas.width, canvas.height, 12);
+                ctx.fill();
+
+                // Borde
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth   = 1.5;
+                ctx.shadowColor = borderColor;
+                ctx.shadowBlur  = 8;
+                roundRect(ctx, 0, 0, canvas.width, canvas.height, 12);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Grid
+                ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+                ctx.lineWidth   = 1;
+                for (let i = 0; i <= 4; i++) {
+                    const y = pad.top + (H / 4) * i;
+                    ctx.beginPath();
+                    ctx.moveTo(pad.left, y);
+                    ctx.lineTo(pad.left + W, y);
+                    ctx.stroke();
+                }
+
+                // Etiquetas Y
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.font      = '11px Courier New';
+                ctx.textAlign = 'right';
+                for (let i = 0; i <= 4; i++) {
+                    const val = minP + (range / 4) * (4 - i);
+                    const y   = pad.top + (H / 4) * i;
+                    ctx.fillText('$' + Math.round(val).toLocaleString(), pad.left - 6, y + 4);
+                }
+
+                if (end < 2) {
+                    if (progress < totalFrames) requestAnimationFrame(animate);
+                    return;
+                }
+
+                const slice = prices.slice(0, end);
+
+                // Área bajo la curva
+                const areaGrad = ctx.createLinearGradient(0, pad.top, 0, pad.top + H);
+                areaGrad.addColorStop(0, isUp ? 'rgba(0,255,136,0.25)' : 'rgba(255,68,68,0.25)');
+                areaGrad.addColorStop(1, 'rgba(0,0,0,0)');
+
+                ctx.beginPath();
+                ctx.moveTo(toX(0), toY(slice[0]));
+                for (let i = 1; i < slice.length; i++) {
+                    const cpx = (toX(i - 1) + toX(i)) / 2;
+                    ctx.bezierCurveTo(cpx, toY(slice[i-1]), cpx, toY(slice[i]), toX(i), toY(slice[i]));
+                }
+                ctx.lineTo(toX(slice.length - 1), pad.top + H);
+                ctx.lineTo(toX(0), pad.top + H);
+                ctx.closePath();
+                ctx.fillStyle = areaGrad;
+                ctx.fill();
+
+                // Línea principal con brillo
+                ctx.shadowColor = lineColor;
+                ctx.shadowBlur  = 12;
+                ctx.strokeStyle = lineColor;
+                ctx.lineWidth   = 2.5;
+                ctx.lineJoin    = 'round';
+                ctx.lineCap     = 'round';
+
+                ctx.beginPath();
+                ctx.moveTo(toX(0), toY(slice[0]));
+                for (let i = 1; i < slice.length; i++) {
+                    const cpx = (toX(i - 1) + toX(i)) / 2;
+                    ctx.bezierCurveTo(cpx, toY(slice[i-1]), cpx, toY(slice[i]), toX(i), toY(slice[i]));
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Punto final parpadeante
+                if (slice.length > 1) {
+                    const lx = toX(slice.length - 1);
+                    const ly = toY(slice[slice.length - 1]);
+                    const pulse = 0.5 + 0.5 * Math.sin(progress * 0.4);
+
+                    ctx.beginPath();
+                    ctx.arc(lx, ly, 5 + pulse * 3, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${isUp ? '0,255,136' : '255,68,68'},${0.3 * pulse})`;
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+                    ctx.fillStyle = lineColor;
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.arc(lx, ly, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+                }
+
+                // Actualizar ticker en tiempo real
+                updateTicker(prices[end - 1], prices[0], isUp, end);
+
+                if (progress < totalFrames) requestAnimationFrame(animate);
+            }
+
+            animate();
+        }
+
+        function roundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        function updateTicker(currentPrice, startPrice, isUp, frame) {
+            const tickerPrice  = document.getElementById('tickerPrice');
+            const tickerChange = document.getElementById('tickerChange');
+            const tickerAsset  = document.getElementById('tickerAsset');
+
+            // Nombre del activo abreviado
+            const assetNames = { 'ACCIONES': 'STCK', 'CRYPTO': 'CRYP', 'BONOS': 'BOND' };
+            tickerAsset.textContent = assetNames[selectedAssetName] || 'MRKT';
+
+            const change    = currentPrice - startPrice;
+            const changePct = ((change / startPrice) * 100).toFixed(2);
+            const color     = isUp ? '#00ff88' : '#ff4444';
+
+            tickerPrice.textContent = '$' + Math.round(currentPrice).toLocaleString();
+            tickerPrice.style.color  = color;
+            tickerPrice.style.textShadow = `0 0 10px ${color}`;
+
+            tickerChange.textContent       = (change >= 0 ? '+' : '') + changePct + '%';
+            tickerChange.style.color       = color;
+            tickerChange.style.background  = isUp ? 'rgba(0,255,136,0.15)' : 'rgba(255,68,68,0.15)';
+            tickerChange.style.border      = `1px solid ${color}`;
+            tickerChange.style.textShadow  = `0 0 8px ${color}`;
+        }
+
+        function createWinParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 15; i++) { // Reducido de 30 a 15
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = (Math.random() * 100) + '%';
+                particle.style.top = '50%';
+                particle.style.background = '#00ff00';
+                particle.style.boxShadow = '0 0 10px #00ff00';
+                container.appendChild(particle);
+                
+                setTimeout(() => {
+                    particle.remove();
+                }, 3000);
+            }
+        }
+
+        function nextRound() {
+            playSound('click');
+            round++;
+            updateStats();
+            // Ir directo a la siguiente predicción del MISMO activo
+            startPredictionRound();
+        }
+
+        function showFinalScreen() {
+            playSound('click');
+            showScreen('finalScreen');
+
+            // Guardar en leaderboard
+            saveToLeaderboard(playerName, money);
+            
+            document.getElementById('finalMoney').textContent = '$' + money.toLocaleString();
+            
+            const finalResult = document.getElementById('finalResult');
+            const profit = money - 5000;
+            const profitPercent = ((profit / 5000) * 100).toFixed(1);
+
+            // Nombre del jugador
+            const nameDisplay = `<p style="color:#ffff00; font-size:1.5rem; margin-bottom:1rem; text-shadow: 0 0 10px #ffff00;">${playerName}</p>`;
+
+            // SVG Trofeo (Caso ganancia >$5000) - CORREGIDO
+            const trophySVG = `
+                <svg width="100" height="110" viewBox="0 0 100 110" style="display:inline-block; margin-bottom:1rem; filter: drop-shadow(0 0 15px #ffff00);">
+                    <!-- Copa -->
+                    <path d="M 30 15 L 70 15 L 65 50 Q 60 65 50 68 Q 40 65 35 50 Z" fill="none" stroke="#ffff00" stroke-width="3" stroke-linejoin="round"/>
+                    <!-- Asas -->
+                    <path d="M 30 20 Q 15 20 15 35 Q 15 48 30 48" fill="none" stroke="#ffff00" stroke-width="2.5"/>
+                    <path d="M 70 20 Q 85 20 85 35 Q 85 48 70 48" fill="none" stroke="#ffff00" stroke-width="2.5"/>
+                    <!-- Pie -->
+                    <line x1="50" y1="68" x2="50" y2="85" stroke="#ffff00" stroke-width="3"/>
+                    <!-- Base -->
+                    <rect x="30" y="85" width="40" height="6" rx="3" fill="none" stroke="#ffff00" stroke-width="2.5"/>
+                    <!-- Estrella interior -->
+                    <path d="M 50 28 L 53 36 L 62 36 L 55 41 L 58 49 L 50 44 L 42 49 L 45 41 L 38 36 L 47 36 Z" fill="#ffff00" fill-opacity="0.4" stroke="#ffff00" stroke-width="1"/>
+                </svg>`;
+
+            // SVG Escudo (Caso empate $5,000)
+            const shieldSVG = `
+                <svg width="100" height="110" viewBox="0 0 100 110" style="display:inline-block; margin-bottom:1rem; filter: drop-shadow(0 0 15px #00ffff);">
+                    <!-- Escudo -->
+                    <path d="M 50 10 L 80 22 L 80 50 Q 80 75 50 90 Q 20 75 20 50 L 20 22 Z" fill="none" stroke="#00ffff" stroke-width="3" stroke-linejoin="round"/>
+                    <!-- Signo igual en el centro -->
+                    <line x1="35" y1="44" x2="65" y2="44" stroke="#00ffff" stroke-width="4" stroke-linecap="round"/>
+                    <line x1="35" y1="56" x2="65" y2="56" stroke="#00ffff" stroke-width="4" stroke-linecap="round"/>
+                    <!-- Brillo interior -->
+                    <path d="M 50 18 L 72 27 L 72 50 Q 72 68 50 80" fill="none" stroke="#00ffff" stroke-width="1" stroke-opacity="0.4"/>
+                </svg>`;
+
+            // SVG Gráfica cayendo (Caso pérdida)
+            const fallingChartSVG = `
+                <svg width="100" height="110" viewBox="0 0 100 110" style="display:inline-block; margin-bottom:1rem; filter: drop-shadow(0 0 15px #ff4444);">
+                    <!-- Ejes -->
+                    <line x1="15" y1="15" x2="15" y2="85" stroke="#ff4444" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="15" y1="85" x2="88" y2="85" stroke="#ff4444" stroke-width="2.5" stroke-linecap="round"/>
+                    <!-- Línea cayendo -->
+                    <polyline points="20,25 35,35 50,50 65,65 80,78" fill="none" stroke="#ff4444" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Flecha al final apuntando abajo -->
+                    <path d="M 80 78 L 88 70 M 80 78 L 88 84" stroke="#ff4444" stroke-width="3" stroke-linecap="round"/>
+                    <!-- Puntos en la línea -->
+                    <circle cx="20" cy="25" r="3.5" fill="#ff4444"/>
+                    <circle cx="35" cy="35" r="3.5" fill="#ff4444"/>
+                    <circle cx="50" cy="50" r="3.5" fill="#ff4444"/>
+                    <circle cx="65" cy="65" r="3.5" fill="#ff4444"/>
+                </svg>`;
+
+            if (money > 5000) {
+                // CASO 3: Ganancia
+                finalResult.innerHTML = `
+                    ${nameDisplay}
+                    <div style="color: #00ff00; text-shadow: 0 0 15px #00ff00;">
+                        ${trophySVG}
+                        <br>STAR INVESTOR!<br>
+                        You gained $${Math.abs(profit).toLocaleString()} (+${profitPercent}%)
+                    </div>
+                `;
+            } else if (money === 5000) {
+                // CASO 1: Empate exacto
+                finalResult.innerHTML = `
+                    ${nameDisplay}
+                    <div style="color: #00ffff; text-shadow: 0 0 15px #00ffff;">
+                        ${shieldSVG}
+                        <br>Break Even! You kept your initial investment<br>
+                        <span style="font-size: 1.3rem;">Next time, grow your money!</span>
+                    </div>
+                `;
+            } else {
+                // CASO 2: Pérdida
+                finalResult.innerHTML = `
+                    ${nameDisplay}
+                    <div style="color: #ff4444; text-shadow: 0 0 15px #ff4444;">
+                        ${fallingChartSVG}
+                        <br>The market won this time!<br>
+                        But every loss is a lesson<br>
+                        <span style="font-size: 1.3rem;">You lost $${Math.abs(profit).toLocaleString()} (${profitPercent}%)</span>
+                    </div>
+                `;
+            }
+        }
+
+        function restartGame() {
+            playSound('click');
+            money = 5000;
+            round = 1;
+            playerHistory = [];
+            usedHints = [];
+            playerName = '';
+            gameLevel = 'normal';
+            applyTheme('normal');
+            updateStats();
+            document.getElementById('restartBtn').style.display = 'none';
+            document.getElementById('playerName').value = '';
+            renderLeaderboard();
+            showScreen('startScreen');
+        }
+
+        function confirmRestart() {
+            playSound('click');
+            if (confirm('Are you sure you want to go back to the start? Current progress will be lost.')) {
+                restartGame();
+            }
+        }
+
+        function goToStart() {
+            playSound('click');
+            money = 5000;
+            round = 1;
+            playerHistory = [];
+            usedHints = [];
+            playerName = '';
+            gameLevel = 'normal';
+            applyTheme('normal');
+            updateStats();
+            document.getElementById('restartBtn').style.display = 'none';
+            document.getElementById('playerName').value = '';
+            renderLeaderboard();
+            showScreen('startScreen');
+        }
+
+        // Inicializar
+        createParticles();
+        renderLeaderboard();
+    </script>
+</body>
+</html>

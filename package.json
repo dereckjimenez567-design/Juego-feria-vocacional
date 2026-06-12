@@ -1,0 +1,12 @@
+{
+  "name": "bull-or-bear",
+  "version": "1.0.0",
+  "description": "Juego de inversiones - Feria Vocacional ACCOUNTING 2026",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
